@@ -151,7 +151,7 @@ class KoikatuCharaData:
                 makeup_s
             ]
             data.append(b"".join(coordinate))
-        return msgpack.packb(data)
+        return msgpack.packb(data, use_bin_type=True)
 
 def main():
     k = KoikatuCharaData("sa.png")

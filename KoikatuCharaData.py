@@ -146,7 +146,7 @@ class KoikatuCharaData:
                 cloth_s,
                 struct.pack("i", len(accessory_s)),
                 accessory_s,
-                struct.pack("b", 0) if i["enableMakeup"] else struct.pack("b", 1),
+                struct.pack("b", 1) if i["enableMakeup"] else struct.pack("b", 0),
                 struct.pack("i", len(makeup_s)),
                 makeup_s
             ]

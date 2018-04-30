@@ -65,3 +65,6 @@ if __name__=='__main__':
 |    face, body, hair|      shape values|
 |   coordinates(List)| contains seven coordinates corresponding to situation.|
 | parameter | personal data (i.e. name, birthday, personality, ..etc)|
+
+# refer
+pngデータの長さの取得にあたり, [martinwu42/pykoikatu](https://github.com/martinwu42/pykoikatu)を参考にしました.

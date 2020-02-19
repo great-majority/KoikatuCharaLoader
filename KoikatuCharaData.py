@@ -90,6 +90,10 @@ class KoikatuCharaData:
         for v in self.value_order:
             datas.update({v.lower(): getattr(self, v).jsonalizable()})
         
+        if include_image:
+            datas.update({"png_image": base64.b64encode(self.png_data).decode("ascii")})
+            datas.update({"face_png_image": base64.b64encode(self.face_png_data).decode("ascii")})
+
         def bin_to_str(serial):
             if isinstance(serial, io.BufferedRandom) or isinstance(serial, bytes):
                 return base64.b64encode(bytes(serial)).decode("ascii")

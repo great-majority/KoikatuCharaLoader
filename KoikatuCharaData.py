@@ -1,81 +1,73 @@
 #!/usr/bin/env python
 
 import struct
-import msgpack
+from msgpack import packb, unpackb
 import io
 import json
+
+def _load_length(data_stream, struct_type):
+    length = struct.unpack(struct_type, data_stream.read(struct.calcsize(struct_type)))[0]
+    return data_stream.read(length)
+
+def _load_type(data_stream, struct_type):
+    return struct.unpack(struct_type, data_stream.read(struct.calcsize(struct_type)))[0]
+
+def _msg_unpack(data):
+    return unpackb(data, raw=False)
+
+def _msg_pack(data):
+    serialized = packb(data, use_single_float=True, use_bin_type=True)
+    return serialized, len(serialized)
 
 class KoikatuCharaData:
     def __init__(self, filename):
         data = None
         with open(filename, "br") as f:
             data = f.read()
-
-        self.png_length = self._get_png_length(data)
+        
+        length = self._get_png_length(data)
         data_stream = io.BytesIO(data)
-        self.png_data = data_stream.read(self.png_length)
-        self.product_no = struct.unpack("i", data_stream.read(4))[0] # 100
-        data_stream.read(20) # b"\x12【KoiKatuChara】\x05"
-        self.version = data_stream.read(5).decode("ascii") # "0.0.0"
-        face_png_length = struct.unpack("i", data_stream.read(4))[0]
-        self.face_png_data = data_stream.read(face_png_length)
+        
+        self.png_data = data_stream.read(length)
+        self.product_no = _load_type(data_stream, "i") # 100
+        self.header = _load_length(data_stream, "b") # 【KoiKatuChara】
+        self.version = _load_length(data_stream, "b") # 0.0.0
+        self.face_png_data = _load_length(data_stream, "i")
+        self._blockdata = _msg_unpack(_load_length(data_stream, "i"))
+        lstinfo_raw = _load_length(data_stream, "q")
 
-        blockdata_size = struct.unpack("i", data_stream.read(4))[0]
-        self.blockdata = msgpack.unpackb(data_stream.read(blockdata_size), raw=False)
-        charadata_size = struct.unpack("q", data_stream.read(8))[0]
-
-        data = data_stream.read()
-        for i in self.blockdata["lstInfo"]:
-            data_part = data[i["pos"]:i["pos"]+i["size"]]
-            if i["name"] == "Custom":
-                self._load_custom(data_part)
-            elif i["name"] == "Coordinate":
-                self._load_coordinate(data_part)
-            elif i["name"] == "Parameter":
-                self.parameter = msgpack.unpackb(data_part, raw=False)
-            elif i["name"] == "Status":
-                self.status = msgpack.unpackb(data_part, raw=False)
+        for i in self._blockdata["lstInfo"]:
+            data_part = lstinfo_raw[i["pos"]:i["pos"]+i["size"]]
+            if i["name"] in globals():
+                setattr(self, i["name"], globals()[i["name"]](data_part))
+            else:
+                raise ValueError("unsupported lstinfo: %s"%i["name"])
 
     def save(self, filename):
-        custom_s = self._serialize_custom()
-        coordinate_s = self._serialize_coordinates()
-        parameter_s = msgpack.packb(self.parameter, use_single_float=True, use_bin_type=True)
-        status_s = msgpack.packb(self.status, use_single_float=True, use_bin_type=True)
-        chara_values = b"".join([
-            custom_s,
-            coordinate_s,
-            parameter_s,
-            status_s
-        ])
+        cumsum = 0
+        value_order = ["Custom", "Coordinate", "Parameter", "Status"]
+        chara_values = []
+        for i,v in enumerate(value_order):
+            serialized, length = getattr(self, v).serialize()
+            self._blockdata["lstInfo"][i]["pos"] = cumsum
+            self._blockdata["lstInfo"][i]["size"] = length
+            chara_values.append(serialized)
+            cumsum += length
+        chara_values = b"".join(chara_values)
+        blockdata_s, blockdata_l = _msg_pack(self._blockdata)
 
-        pos = 0
-        for i,n in enumerate(self.blockdata["lstInfo"]):
-            if n["name"] == "Custom":
-                self.blockdata["lstInfo"][i]["pos"] = pos
-                self.blockdata["lstInfo"][i]["size"] = len(custom_s)
-                pos += len(custom_s)
-            elif n["name"] == "Coordinate":
-                self.blockdata["lstInfo"][i]["pos"] = pos
-                self.blockdata["lstInfo"][i]["size"] = len(coordinate_s)
-                pos += len(coordinate_s)
-            elif n["name"] == "Parameter":
-                self.blockdata["lstInfo"][i]["pos"] = pos
-                self.blockdata["lstInfo"][i]["size"] = len(parameter_s)
-                pos += len(parameter_s)
-            elif n["name"] == "Status":
-                self.blockdata["lstInfo"][i]["pos"] = pos
-                self.blockdata["lstInfo"][i]["size"] = len(status_s)
-                pos += len(status_s)
-        blockdata_s = msgpack.packb(self.blockdata, use_single_float=True, use_bin_type=True)
-
+        ipack = struct.Struct("i")
+        bpack = struct.Struct("b")
         data = b"".join([
             self.png_data,
-            struct.pack("i", self.product_no),
-            b"\x12"+"【KoiKatuChara】".encode("utf-8")+b"\x05",
-            self.version.encode("ascii"),
-            struct.pack("i", len(self.face_png_data)),
+            ipack.pack(self.product_no),
+            bpack.pack(len(self.header)),
+            self.header,
+            bpack.pack(len(self.version)),
+            self.version,
+            ipack.pack(len(self.face_png_data)),
             self.face_png_data,
-            struct.pack("i", len(blockdata_s)),
+            ipack.pack(blockdata_l),
             blockdata_s,
             struct.pack("q", len(chara_values)),
             chara_values
@@ -96,67 +88,76 @@ class KoikatuCharaData:
             if chunk_type == 'IEND':
                 break
         return idx-orig
+    
+    def __str__(self):
+        header = self.header.decode("utf-8")
+        name = "{} {} ( {} )".format(
+            self.Parameter.parameter["lastname"],
+            self.Parameter.parameter["firstname"],
+            self.Parameter.parameter["nickname"]
+        )
+        return "{}: {}".format(header, name)
 
-    def _load_custom(self, data):
+class Custom:
+    def __init__(self, data):
         data_stream = io.BytesIO(data)
-        length = struct.unpack("i", data_stream.read(4))[0]
-        self.face = msgpack.unpackb(data_stream.read(length), raw=False)
-        length = struct.unpack("i", data_stream.read(4))[0]
-        self.body = msgpack.unpackb(data_stream.read(length), raw=False)
-        length = struct.unpack("i", data_stream.read(4))[0]
-        self.hair = msgpack.unpackb(data_stream.read(length), raw=False)
+        self.fields = ["face", "body", "hair"]
+        for f in self.fields:
+            setattr(self, f, _msg_unpack(_load_length(data_stream, "i")))
 
-    def _serialize_custom(self):
-        face_s = msgpack.packb(self.face, use_single_float=True, use_bin_type=True)
-        body_s = msgpack.packb(self.body, use_single_float=True, use_bin_type=True)
-        hair_s = msgpack.packb(self.hair, use_single_float=True, use_bin_type=True)
-        data = [
-            struct.pack("i", len(face_s)),
-            face_s,
-            struct.pack("i", len(body_s)),
-            body_s,
-            struct.pack("i", len(hair_s)),
-            hair_s
-        ]
-        return b"".join(data)
+    def serialize(self):
+        data = []
+        pack = struct.Struct("i")
+        for f in self.fields:
+            field_s, length = _msg_pack(getattr(self, f))
+            data.append(pack.pack(length))
+            data.append(field_s)
+        serialized = b"".join(data)
+        return serialized, len(serialized)
 
-    def _load_coordinate(self, data):
+class Coordinate:
+    def __init__(self, data):
         self.coordinates = []
-        for c in msgpack.unpackb(data):
+        for c in _msg_unpack(data):
             coordinate = {}
             data_stream = io.BytesIO(c)
-            length = struct.unpack("i", data_stream.read(4))[0]
-            coordinate["clothes"] = msgpack.unpackb(data_stream.read(length), raw=False)
-            length = struct.unpack("i", data_stream.read(4))[0]
-            coordinate["accessory"] = msgpack.unpackb(data_stream.read(length), raw=False)
-            makeup = struct.unpack("b", data_stream.read(1))[0] 
-            coordinate["enableMakeup"] = True if makeup != 0 else False
-            length = struct.unpack("i", data_stream.read(4))[0]
-            coordinate["makeup"] = msgpack.unpackb(data_stream.read(length), raw=False)
+            coordinate["clothes"] = _msg_unpack(_load_length(data_stream, "i"))
+            coordinate["accessory"] = _msg_unpack(_load_length(data_stream, "i"))
+            coordinate["enableMakeup"] = bool(_load_type(data_stream, "b"))
+            coordinate["makeup"] = _msg_unpack(_load_length(data_stream, "i"))
             self.coordinates.append(coordinate)
     
-    def _serialize_coordinates(self):
+    def serialize(self):
         data = []
         for i in self.coordinates:
-            cloth_s = msgpack.packb(i["clothes"], use_single_float=True, use_bin_type=True)
-            accessory_s = msgpack.packb(i["accessory"], use_single_float=True, use_bin_type=True)
-            makeup_s = msgpack.packb(i["makeup"], use_single_float=True, use_bin_type=True, strict_types=True)
-            coordinate = [
-                struct.pack("i", len(cloth_s)),
-                cloth_s,
-                struct.pack("i", len(accessory_s)),
-                accessory_s,
-                struct.pack("b", 1) if i["enableMakeup"] else struct.pack("b", 0),
-                struct.pack("i", len(makeup_s)),
-                makeup_s
-            ]
-            data.append(b"".join(coordinate))
-        return msgpack.packb(data, use_bin_type=True)
+            c = []
+            pack = struct.Struct("i")
 
-def main():
-    k = KoikatuCharaData("sa.png")
-    #print(json.dumps(k.coordinates[0]["makeup"], indent=2))
-    k.save("si.png")
+            serialized, length = _msg_pack(i["clothes"])
+            c.extend([pack.pack(length), serialized])
 
-if __name__ == '__main__':
-    main()
+            serialized, length = _msg_pack(i["accessory"])
+            c.extend([pack.pack(length), serialized])
+
+            c.append(struct.pack("b", i["enableMakeup"]))
+            
+            serialized, length = _msg_pack(i["makeup"])
+            c.extend([pack.pack(length), serialized])
+            
+            data.append(b"".join(c))
+        serialized_all, length = _msg_pack(data)
+        return serialized_all, length
+
+class Parameter:
+    def __init__(self, data):
+        self.parameter = _msg_unpack(data)
+    def serialize(self):
+        serialized, length = _msg_pack(self.parameter)
+        return serialized, length
+
+class Status:
+    def __init__(self, data):
+        self.status = _msg_unpack(data)
+    def serialize(self):
+        serialized, length = _msg_pack(self.status)
+        return serialized, length

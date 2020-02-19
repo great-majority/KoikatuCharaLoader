@@ -1,6 +1,39 @@
 # KoikatuCharaLoader
 a simple deserializer / serializer for Koikatu character data.
 
+# update: "dump as json" is now available.
+```
+from KoikatuCharaData import KoikatuCharaData
+
+def main():
+    k = KoikatuCharaData("sa.png")
+    k.save_json("sa.json")
+
+if __name__=='__main__':
+    main()  
+```
+
+- `sa.json`
+```sa.json
+{
+  "product_no": 100,
+  "header": "\u3010KoiKatuChara\u3011",
+  "version": "0.0.0",
+  "custom": {
+    "face": {
+      "version": "0.0.2",
+      "shapeValueFace": [
+        0.5403226017951965,
+        1.0,
+        0.2016129046678543,
+        0.0,
+        0.22580644488334656,
+        0.0,
+        0.0,
+        0.1794193685054779,
+        0.0,
+...
+```
 
 # install
 requires python 3.x and `msgpack`
@@ -33,7 +66,7 @@ from KoikatuCharaData import KoikatuCharaData
 
 def main():
     k = KoikatuCharaData("sa.png")
-    k.body["shapeValueBody"][0] = 0.5
+    k.custom["body"]["shapeValueBody"][0] = 0.5
     k.save("si.png")
 
 if __name__=='__main__':
@@ -46,7 +79,7 @@ from KoikatuCharaData import KoikatuCharaData
 
 def main():
     k = KoikatuCharaData("sa.png")
-    for i,c in enumerate(k.coordinates):
+    for i,c in enumerate(k.coordinate):
         for n,p in enumerate(c["accessory"]["parts"]):
             if p["id"] == 5:
                 k.coordinates[i]["accessory"]["parts"][n]["type"] = 120

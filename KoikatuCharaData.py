@@ -4,6 +4,8 @@ import struct
 from msgpack import packb, unpackb
 import io
 import json
+import copy
+import base64
 
 def _load_length(data_stream, struct_type):
     length = struct.unpack(struct_type, data_stream.read(struct.calcsize(struct_type)))[0]
@@ -20,6 +22,8 @@ def _msg_pack(data):
     return serialized, len(serialized)
 
 class KoikatuCharaData:
+    value_order = ["Custom", "Coordinate", "Parameter", "Status"]
+    
     def __init__(self, filename):
         data = None
         with open(filename, "br") as f:
@@ -40,14 +44,15 @@ class KoikatuCharaData:
             data_part = lstinfo_raw[i["pos"]:i["pos"]+i["size"]]
             if i["name"] in globals():
                 setattr(self, i["name"], globals()[i["name"]](data_part))
+                # for backward compatibility
+                setattr(self, i["name"].lower(), getattr(self, i["name"]).jsonalizable())
             else:
                 raise ValueError("unsupported lstinfo: %s"%i["name"])
 
     def save(self, filename):
         cumsum = 0
-        value_order = ["Custom", "Coordinate", "Parameter", "Status"]
         chara_values = []
-        for i,v in enumerate(value_order):
+        for i,v in enumerate(self.value_order):
             serialized, length = getattr(self, v).serialize()
             self._blockdata["lstInfo"][i]["pos"] = cumsum
             self._blockdata["lstInfo"][i]["size"] = length
@@ -75,6 +80,24 @@ class KoikatuCharaData:
 
         with open(filename, "bw+") as f:
             f.write(data)
+        
+    def save_json(self, filename, include_image=False):
+        datas = {
+            "product_no": self.product_no,
+            "header": self.header.decode("utf-8"),
+            "version": self.version.decode("utf-8")
+        }
+        for v in self.value_order:
+            datas.update({v.lower(): getattr(self, v).jsonalizable()})
+        
+        def bin_to_str(serial):
+            if isinstance(serial, io.BufferedRandom) or isinstance(serial, bytes):
+                return base64.b64encode(bytes(serial)).decode("ascii")
+            else:
+                raise TypeError("{} is not JSON serializable".format(serial))
+
+        with open(filename, "w+") as f:
+            json.dump(datas, f, indent=2, default=bin_to_str)
 
     def _get_png_length(self, png_data, orig=0):
         idx = orig
@@ -114,6 +137,12 @@ class Custom:
             data.append(field_s)
         serialized = b"".join(data)
         return serialized, len(serialized)
+    
+    def jsonalizable(self):
+        data = {}
+        for f in self.fields:
+            data.update({f: getattr(self, f)})
+        return data
 
 class Coordinate:
     def __init__(self, data):
@@ -147,6 +176,9 @@ class Coordinate:
             data.append(b"".join(c))
         serialized_all, length = _msg_pack(data)
         return serialized_all, length
+    
+    def jsonalizable(self):
+        return self.coordinates
 
 class Parameter:
     def __init__(self, data):
@@ -154,6 +186,8 @@ class Parameter:
     def serialize(self):
         serialized, length = _msg_pack(self.parameter)
         return serialized, length
+    def jsonalizable(self):
+        return self.parameter
 
 class Status:
     def __init__(self, data):
@@ -161,3 +195,5 @@ class Status:
     def serialize(self):
         serialized, length = _msg_pack(self.status)
         return serialized, length
+    def jsonalizable(self):
+        return self.status

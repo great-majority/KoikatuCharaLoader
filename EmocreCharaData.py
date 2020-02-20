@@ -104,6 +104,12 @@ class EmocreCharaData:
 
         with open(filename, "w+") as f:
             json.dump(datas, f, indent=2, default=bin_to_str)
+    
+    def __str__(self):
+        header = self.header.decode("utf-8")
+        userid = self.userid.decode("ascii")
+        dataid = self.dataid.decode("ascii")
+        return "{}, {}, userid:{}, dataid:{}".format(header, self.parameter["fullname"], userid, dataid)
 
 class Coordinate(Custom):
     def __init__(self, data):

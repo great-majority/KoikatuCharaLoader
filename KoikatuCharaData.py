@@ -91,11 +91,11 @@ class KoikatuCharaData:
     def __str__(self):
         header = self.header.decode("utf-8")
         name = "{} {} ( {} )".format(
-            self.Parameter.parameter["lastname"],
-            self.Parameter.parameter["firstname"],
-            self.Parameter.parameter["nickname"]
+            self.parameter["lastname"],
+            self.parameter["firstname"],
+            self.parameter["nickname"]
         )
-        return "{}: {}".format(header, name)
+        return "{}, {}".format(header, name)
 
 class Custom:
     def __init__(self, data):

@@ -8,7 +8,8 @@ import json
 import base64
 
 class EmocreCharaData:
-    
+    value_order = ["Custom", "Coordinate", "Parameter", "Status"]
+
     def __init__(self, filename):
         data = None
         with open(filename, "br") as f:
@@ -39,7 +40,70 @@ class EmocreCharaData:
                 setattr(self, i["name"].lower(), getattr(self, i["name"]).jsonalizable())
             else:
                 raise ValueError("unsupported lstinfo: %s"%i["name"])
-        pass
+    
+    def save(self, filename):
+        cumsum = 0
+        chara_values = []
+        for i,v in enumerate(self.value_order):
+            serialized, length = getattr(self, v).serialize()
+            self._blockdata["lstInfo"][i]["pos"] = cumsum
+            self._blockdata["lstInfo"][i]["size"] = length
+            chara_values.append(serialized)
+            cumsum += length
+        chara_values = b"".join(chara_values)
+        blockdata_s, blockdata_l = msg_pack(self._blockdata)
+
+        ipack = struct.Struct("i")
+        bpack = struct.Struct("b")
+        tags = b"".join(list(map(lambda x: ipack.pack(x), self.tags)))
+        data = b"".join([
+            self.png_data,
+            ipack.pack(self.product_no),
+            bpack.pack(len(self.header)),
+            self.header,
+            bpack.pack(len(self.version)),
+            self.version,
+            ipack.pack(self.language),
+            bpack.pack(len(self.userid)),
+            self.userid,
+            bpack.pack(len(self.dataid)),
+            self.dataid,
+            ipack.pack(len(self.tags)),
+            tags,
+            ipack.pack(blockdata_l),
+            blockdata_s,
+            struct.pack("q", len(chara_values)),
+            chara_values
+        ])
+
+        with open(filename, "bw+") as f:
+            f.write(data)
+        
+    def save_json(self, filename, include_image=False):
+        datas = {
+            "product_no": self.product_no,
+            "header": self.header.decode("utf-8"),
+            "version": self.version.decode("utf-8"),
+            "userid": self.userid.decode("utf-8"),
+            "dataid": self.dataid.decode("utf-8"),
+            "language": self.language,
+            "tags": self.tags
+        }
+        for v in self.value_order:
+            datas.update({v.lower(): getattr(self, v).jsonalizable()})
+        
+        if include_image:
+            datas.update({"png_image": base64.b64encode(self.png_data).decode("ascii")})
+            datas.update({"face_png_image": base64.b64encode(self.face_png_data).decode("ascii")})
+
+        def bin_to_str(serial):
+            if isinstance(serial, io.BufferedRandom) or isinstance(serial, bytes):
+                return base64.b64encode(bytes(serial)).decode("ascii")
+            else:
+                raise TypeError("{} is not JSON serializable".format(serial))
+
+        with open(filename, "w+") as f:
+            json.dump(datas, f, indent=2, default=bin_to_str)
 
 class Coordinate(Custom):
     def __init__(self, data):

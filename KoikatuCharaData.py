@@ -9,32 +9,50 @@ import base64
 class KoikatuCharaData:
     value_order = ["Custom", "Coordinate", "Parameter", "Status"]
     
-    def __init__(self, filename):
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def load(filelike):
         data = None
-        with open(filename, "br") as f:
-            data = f.read()
+        kc = KoikatuCharaData()
+        kc.png_data = None 
+        if isinstance(filelike, str):
+            with open(filelike, "br") as f:
+                data = f.read()
+            data_stream = io.BytesIO(data)
+            length = get_png_length(data)
+            kc.png_data = data_stream.read(length)
+
+        elif isinstance(filelike, bytes):
+            data_stream = io.BytesIO(filelike)
+            length = get_png_length(data)
+            kc.png_data = data_stream.read(length)
+
+        elif isinstance(filelike, io.BytesIO): # treat as no png data
+            data_stream = filelike
         
-        length = get_png_length(data)
-        data_stream = io.BytesIO(data)
-        
-        self.png_data = data_stream.read(length)
-        self.product_no = load_type(data_stream, "i") # 100
-        self.header = load_length(data_stream, "b") # 【KoiKatuChara】
-        self.version = load_length(data_stream, "b") # 0.0.0
-        self.face_png_data = load_length(data_stream, "i")
-        self._blockdata = msg_unpack(load_length(data_stream, "i"))
+        else:
+            ValueError("unsupported input. type:{}".format(type(filelike)))
+
+        kc.product_no = load_type(data_stream, "i") # 100
+        kc.header = load_length(data_stream, "b") # 【KoiKatuChara】
+        kc.version = load_length(data_stream, "b") # 0.0.0
+        kc.face_png_data = load_length(data_stream, "i")
+        kc._blockdata = msg_unpack(load_length(data_stream, "i"))
         lstinfo_raw = load_length(data_stream, "q")
 
-        for i in self._blockdata["lstInfo"]:
+        for i in kc._blockdata["lstInfo"]:
             data_part = lstinfo_raw[i["pos"]:i["pos"]+i["size"]]
             if i["name"] in globals():
-                setattr(self, i["name"], globals()[i["name"]](data_part))
+                setattr(kc, i["name"], globals()[i["name"]](data_part))
                 # for backward compatibility
-                setattr(self, i["name"].lower(), getattr(self, i["name"]).jsonalizable())
+                setattr(kc, i["name"].lower(), getattr(kc, i["name"]).jsonalizable())
             else:
                 raise ValueError("unsupported lstinfo: %s"%i["name"])
+        return kc
 
-    def save(self, filename):
+    def __bytes__(self):
         cumsum = 0
         chara_values = []
         for i,v in enumerate(self.value_order):
@@ -48,8 +66,10 @@ class KoikatuCharaData:
 
         ipack = struct.Struct("i")
         bpack = struct.Struct("b")
-        data = b"".join([
-            self.png_data,
+        data_chunks = []
+        if self.png_data:
+            data_chunks.append(self.png_data)
+        data_chunks.extend([
             ipack.pack(self.product_no),
             bpack.pack(len(self.header)),
             self.header,
@@ -62,7 +82,11 @@ class KoikatuCharaData:
             struct.pack("q", len(chara_values)),
             chara_values
         ])
+        data = b"".join(data_chunks)
+        return data
 
+    def save(self, filename):
+        data = bytes(self)
         with open(filename, "bw+") as f:
             f.write(data)
         

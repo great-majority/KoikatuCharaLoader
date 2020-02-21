@@ -1,12 +1,12 @@
 # KoikatuCharaLoader
-a simple deserializer / serializer for Koikatu character data.
+a simple deserializer / serializer for Koikatu / EmotionCreators character data.
 
 # update: "dump as json" is now available.
 ```
 from KoikatuCharaData import KoikatuCharaData
 
 def main():
-    k = KoikatuCharaData("sa.png")
+    k = KoikatuCharaData.load("sa.png")
     k.save_json("sa.json")
 
 if __name__=='__main__':
@@ -50,7 +50,7 @@ $ pip install -r requirements.txt
 from KoikatuCharaData import KoikatuCharaData
 
 def main():
-    k = KoikatuCharaData("sa.png")
+    k = KoikatuCharaData.load("sa.png")
     k.parameter["lastname"] = "春野"
     k.parameter["firstname"] = "千佳"
     k.parameter["nickname"] = "ちかりん"
@@ -65,7 +65,7 @@ if __name__=='__main__':
 from KoikatuCharaData import KoikatuCharaData
 
 def main():
-    k = KoikatuCharaData("sa.png")
+    k = KoikatuCharaData.load("sa.png")
     k.custom["body"]["shapeValueBody"][0] = 0.5
     k.save("si.png")
 
@@ -78,7 +78,7 @@ if __name__=='__main__':
 from KoikatuCharaData import KoikatuCharaData
 
 def main():
-    k = KoikatuCharaData("sa.png")
+    k = KoikatuCharaData.load("sa.png")
     for i,c in enumerate(k.coordinate):
         for n,p in enumerate(c["accessory"]["parts"]):
             if p["id"] == 5:

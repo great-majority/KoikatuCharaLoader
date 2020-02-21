@@ -10,38 +10,53 @@ import base64
 class EmocreCharaData:
     value_order = ["Custom", "Coordinate", "Parameter", "Status"]
 
-    def __init__(self, filename):
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def load(filelike):
         data = None
-        with open(filename, "br") as f:
-            data = f.read()
+        ec = EmocreCharaData()
+
+        if isinstance(filelike, str):
+            with open(filelike, "br") as f:
+                data = f.read()
         
+        elif isinstance(filelike, bytes):
+            data = filelike
+        
+        else:
+            ValueError("unsupported input. type:{}".format(type(filelike)))
+
         length = get_png_length(data)
         data_stream = io.BytesIO(data)
         
-        self.png_data = data_stream.read(length)
-        self.product_no = load_type(data_stream, "i")
-        self.header = load_length(data_stream, "b")
-        self.version = load_length(data_stream, "b")
-        self.language = load_type(data_stream, "i")
-        self.userid = load_length(data_stream, "b")
-        self.dataid = load_length(data_stream, "b")
+        ec.png_data = data_stream.read(length)
+        ec.product_no = load_type(data_stream, "i")
+        ec.header = load_length(data_stream, "b")
+        ec.version = load_length(data_stream, "b")
+        ec.language = load_type(data_stream, "i")
+        ec.userid = load_length(data_stream, "b")
+        ec.dataid = load_length(data_stream, "b")
         tag_length = load_type(data_stream, "i")
-        self.tags = []
+        ec.tags = []
         for i in range(tag_length):
-            self.tags.append(load_type(data_stream, "i"))
-        self._blockdata = msg_unpack(load_length(data_stream, "i"))
+            ec.tags.append(load_type(data_stream, "i"))
+        ec._blockdata = msg_unpack(load_length(data_stream, "i"))
         lstinfo_raw = load_length(data_stream, "q")
 
-        for i in self._blockdata["lstInfo"]:
+        for i in ec._blockdata["lstInfo"]:
             data_part = lstinfo_raw[i["pos"]:i["pos"]+i["size"]]
             if i["name"] in globals():
-                setattr(self, i["name"], globals()[i["name"]](data_part))
+                setattr(ec, i["name"], globals()[i["name"]](data_part))
                 # for backward compatibility
-                setattr(self, i["name"].lower(), getattr(self, i["name"]).jsonalizable())
+                setattr(ec, i["name"].lower(), getattr(ec, i["name"]).jsonalizable())
             else:
                 raise ValueError("unsupported lstinfo: %s"%i["name"])
+        
+        return ec
     
-    def save(self, filename):
+    def __bytes__(self):
         cumsum = 0
         chara_values = []
         for i,v in enumerate(self.value_order):
@@ -75,7 +90,10 @@ class EmocreCharaData:
             struct.pack("q", len(chara_values)),
             chara_values
         ])
+        return data
 
+    def save(self, filename):
+        data = self.__bytes__()
         with open(filename, "bw+") as f:
             f.write(data)
         

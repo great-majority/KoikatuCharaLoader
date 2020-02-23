@@ -42,10 +42,10 @@ class EmocreCharaData:
         ec.tags = []
         for i in range(tag_length):
             ec.tags.append(load_type(data_stream, "i"))
-        ec._blockdata = msg_unpack(load_length(data_stream, "i"))
+        ec.blockdata = msg_unpack(load_length(data_stream, "i"))
         lstinfo_raw = load_length(data_stream, "q")
 
-        for i in ec._blockdata["lstInfo"]:
+        for i in ec.blockdata["lstInfo"]:
             data_part = lstinfo_raw[i["pos"]:i["pos"]+i["size"]]
             if i["name"] in globals():
                 setattr(ec, i["name"], globals()[i["name"]](data_part))
@@ -61,12 +61,12 @@ class EmocreCharaData:
         chara_values = []
         for i,v in enumerate(self.value_order):
             serialized, length = getattr(self, v).serialize()
-            self._blockdata["lstInfo"][i]["pos"] = cumsum
-            self._blockdata["lstInfo"][i]["size"] = length
+            self.blockdata["lstInfo"][i]["pos"] = cumsum
+            self.blockdata["lstInfo"][i]["size"] = length
             chara_values.append(serialized)
             cumsum += length
         chara_values = b"".join(chara_values)
-        blockdata_s, blockdata_l = msg_pack(self._blockdata)
+        blockdata_s, blockdata_l = msg_pack(self.blockdata)
 
         ipack = struct.Struct("i")
         bpack = struct.Struct("b")
@@ -102,6 +102,7 @@ class EmocreCharaData:
             "product_no": self.product_no,
             "header": self.header.decode("utf-8"),
             "version": self.version.decode("utf-8"),
+            "blockdata": self.blockdata,
             "userid": self.userid.decode("utf-8"),
             "dataid": self.dataid.decode("utf-8"),
             "language": self.language,
@@ -112,7 +113,6 @@ class EmocreCharaData:
         
         if include_image:
             datas.update({"png_image": base64.b64encode(self.png_data).decode("ascii")})
-            datas.update({"face_png_image": base64.b64encode(self.face_png_data).decode("ascii")})
 
         def bin_to_str(serial):
             if isinstance(serial, io.BufferedRandom) or isinstance(serial, bytes):
@@ -130,8 +130,10 @@ class EmocreCharaData:
         return "{}, {}, userid:{}, dataid:{}".format(header, self.parameter["fullname"], userid, dataid)
 
 class Coordinate(Custom):
-    def __init__(self, data):
+    fields = ["clothes", "accessory"]
+    def __init__(self, data=None):
+        if data is None:
+            return
         data_stream = io.BytesIO(data)
-        self.fields = ["colthes", "accessory"]
         for f in self.fields:
             setattr(self, f, msg_unpack(load_length(data_stream, "i")))

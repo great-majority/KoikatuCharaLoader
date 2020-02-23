@@ -39,10 +39,10 @@ class KoikatuCharaData:
         kc.header = load_length(data_stream, "b") # 【KoiKatuChara】
         kc.version = load_length(data_stream, "b") # 0.0.0
         kc.face_png_data = load_length(data_stream, "i")
-        kc._blockdata = msg_unpack(load_length(data_stream, "i"))
+        kc.blockdata = msg_unpack(load_length(data_stream, "i"))
         lstinfo_raw = load_length(data_stream, "q")
 
-        for i in kc._blockdata["lstInfo"]:
+        for i in kc.blockdata["lstInfo"]:
             data_part = lstinfo_raw[i["pos"]:i["pos"]+i["size"]]
             if i["name"] in globals():
                 setattr(kc, i["name"], globals()[i["name"]](data_part))
@@ -57,12 +57,12 @@ class KoikatuCharaData:
         chara_values = []
         for i,v in enumerate(self.value_order):
             serialized, length = getattr(self, v).serialize()
-            self._blockdata["lstInfo"][i]["pos"] = cumsum
-            self._blockdata["lstInfo"][i]["size"] = length
+            self.blockdata["lstInfo"][i]["pos"] = cumsum
+            self.blockdata["lstInfo"][i]["size"] = length
             chara_values.append(serialized)
             cumsum += length
         chara_values = b"".join(chara_values)
-        blockdata_s, blockdata_l = msg_pack(self._blockdata)
+        blockdata_s, blockdata_l = msg_pack(self.blockdata)
 
         ipack = struct.Struct("i")
         bpack = struct.Struct("b")
@@ -94,7 +94,8 @@ class KoikatuCharaData:
         datas = {
             "product_no": self.product_no,
             "header": self.header.decode("utf-8"),
-            "version": self.version.decode("utf-8")
+            "version": self.version.decode("utf-8"),
+            "blockdata": self.blockdata
         }
         for v in self.value_order:
             datas.update({v.lower(): getattr(self, v).jsonalizable()})

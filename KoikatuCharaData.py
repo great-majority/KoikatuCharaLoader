@@ -146,7 +146,9 @@ class Custom:
         return data
 
 class Coordinate:
-    def __init__(self, data):
+    def __init__(self, data=None):
+        if data is None:
+            return
         self.coordinates = []
         for c in msg_unpack(data):
             coordinate = {}

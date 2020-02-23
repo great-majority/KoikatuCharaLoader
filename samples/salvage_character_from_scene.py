@@ -5,12 +5,8 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-import struct
-from funcs import load_length, load_type, msg_pack, msg_unpack, get_png_length
 from KoikatuCharaData import KoikatuCharaData
 import io
-import json
-import base64
 import copy
 
 def search_characters_from_scene(filename):
@@ -32,11 +28,17 @@ def search_characters_from_scene(filename):
 
 def main():
     charas = search_characters_from_scene("./datas/kk_scene.png")
-    for i,c in enumerate(charas):
+
+    for c in charas:
         print(c)
         # use face png data instead of png data.
         c.png_data = copy.deepcopy(c.face_png_data)
-        c.save("./datas/{}.png".format(i))
+        name = "{}{}({})".format(
+            c.parameter["lastname"],
+            c.parameter["firstname"],
+            c.parameter["nickname"]
+        )
+        c.save("./datas/{}.png".format(name))
 
 if __name__=="__main__":
     main()

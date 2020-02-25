@@ -39,9 +39,9 @@ class EmocreCharaData:
         ec.userid = load_length(data_stream, "b")
         ec.dataid = load_length(data_stream, "b")
         tag_length = load_type(data_stream, "i")
-        ec.tags = []
+        ec.packages = []
         for i in range(tag_length):
-            ec.tags.append(load_type(data_stream, "i"))
+            ec.packages.append(load_type(data_stream, "i"))
         ec.blockdata = msg_unpack(load_length(data_stream, "i"))
         lstinfo_raw = load_length(data_stream, "q")
 

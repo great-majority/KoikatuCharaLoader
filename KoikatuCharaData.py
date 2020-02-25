@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 
 import struct
-from funcs import load_length, load_type, msg_pack, msg_unpack, get_png_length
+from funcs import load_length, load_type, msg_pack, msg_unpack, get_png
 import io
 import json
 import base64
@@ -13,27 +13,26 @@ class KoikatuCharaData:
         pass
 
     @staticmethod
-    def load(filelike):
-        data = None
+    def load(filelike, contains_png=True):
         kc = KoikatuCharaData()
-        kc.png_data = None 
+
         if isinstance(filelike, str):
             with open(filelike, "br") as f:
                 data = f.read()
             data_stream = io.BytesIO(data)
-            length = get_png_length(data)
-            kc.png_data = data_stream.read(length)
 
         elif isinstance(filelike, bytes):
             data_stream = io.BytesIO(filelike)
-            length = get_png_length(data)
-            kc.png_data = data_stream.read(length)
 
-        elif isinstance(filelike, io.BytesIO): # treat as no png data
+        elif isinstance(filelike, io.BytesIO):
             data_stream = filelike
         
         else:
             ValueError("unsupported input. type:{}".format(type(filelike)))
+
+        kc.png_data = None 
+        if contains_png:
+            kc.png_data = get_png(data_stream)
 
         kc.product_no = load_type(data_stream, "i") # 100
         kc.header = load_length(data_stream, "b") # 【KoiKatuChara】

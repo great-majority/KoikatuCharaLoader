@@ -2,7 +2,7 @@
 
 import struct
 from KoikatuCharaData import Custom, Parameter, Status
-from funcs import load_length, load_type, msg_pack, msg_unpack, get_png_length
+from funcs import load_length, load_type, msg_pack, msg_unpack, get_png
 import io
 import json
 import base64
@@ -15,23 +15,23 @@ class EmocreCharaData:
 
     @staticmethod
     def load(filelike):
-        data = None
         ec = EmocreCharaData()
 
         if isinstance(filelike, str):
             with open(filelike, "br") as f:
                 data = f.read()
+            data_stream = io.BytesIO(data)
         
         elif isinstance(filelike, bytes):
-            data = filelike
+            data_stream = io.BytesIO(filelike)
+        
+        elif isinstance(filelike, io.BytesIO):
+            data_stream = filelike
         
         else:
             ValueError("unsupported input. type:{}".format(type(filelike)))
-
-        length = get_png_length(data)
-        data_stream = io.BytesIO(data)
         
-        ec.png_data = data_stream.read(length)
+        ec.png_data = get_png(data_stream)
         ec.product_no = load_type(data_stream, "i")
         ec.header = load_length(data_stream, "b")
         ec.version = load_length(data_stream, "b")

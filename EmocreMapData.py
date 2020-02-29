@@ -23,8 +23,11 @@ class EmocreMapData:
         elif isinstance(filelike, bytes):
             data_stream = io.BytesIO(filelike)
         
+        elif isinstance(filelike, io.BytesIO):
+            data_stream = filelike
+        
         else:
-            ValueError("unsupported input. type:{}".format(type(filelike)))
+            raise ValueError("unsupported input. type:{}".format(type(filelike)))
         
         em.png_data = None
         if contains_png:

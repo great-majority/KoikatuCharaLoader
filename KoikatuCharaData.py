@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 
 import struct
-from funcs import load_length, load_type, msg_pack, msg_unpack, get_png
+from .funcs import load_length, load_type, msg_pack, msg_unpack, get_png
 import io
 import json
 import base64

@@ -6,8 +6,34 @@ def load_length(data_stream, struct_type):
     length = struct.unpack(struct_type, data_stream.read(struct.calcsize(struct_type)))[0]
     return data_stream.read(length)
 
+def load_string(data_stream):
+    length = 0
+    i = 0
+    while True:
+        serial = struct.unpack("B", data_stream.read(struct.calcsize("B")))[0]
+        length |= (0b01111111 & serial) << 7*i
+        if serial >> 7 != 1:
+            break
+        i += 1
+    data = data_stream.read(length)
+    return data
+
 def load_type(data_stream, struct_type):
     return struct.unpack(struct_type, data_stream.read(struct.calcsize(struct_type)))[0]
+
+def write_string(data_stream, value):
+    length_bytes = b""
+    length = len(value)
+    while True:
+        serial = length & 0b1111111
+        if length >> 7 != 0:
+            length = length >> 7
+            length_bytes += 0b10000000 | serial
+        else:
+            length_bytes += serial
+            break
+    data_stream.write(length_bytes)
+    data_stream.write(value)
 
 def msg_unpack(data):
     return unpackb(data, raw=False)

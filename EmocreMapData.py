@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 
 import struct
-from .funcs import load_length, load_type, msg_pack, msg_unpack, get_png
+from .funcs import load_length, load_string, load_type, msg_pack, msg_unpack, get_png
 import io
 import json
 import base64
@@ -173,7 +173,7 @@ class Node:
                 self.nodes.append(Node(data_stream, version, child_nodetype))
 
         elif nodetype==3:
-            self.name = load_length(data_stream, "b")
+            self.name = load_string(data_stream)
             self.nodes = []
             length = load_type(data_stream, "i")
             for i in range(length):

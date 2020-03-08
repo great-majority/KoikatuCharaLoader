@@ -28,9 +28,9 @@ def write_string(data_stream, value):
         serial = length & 0b1111111
         if length >> 7 != 0:
             length = length >> 7
-            length_bytes += 0b10000000 | serial
+            length_bytes += struct.pack("b", 0b10000000 | serial)
         else:
-            length_bytes += serial
+            length_bytes += struct.pack("b", serial)
             break
     data_stream.write(length_bytes)
     data_stream.write(value)

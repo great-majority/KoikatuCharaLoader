@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "kkloader"
-version = "0.1.1"
+version = "0.1.2"
 description = "a simple deserializer / serializer for Koikatu / EmotionCreators data."
 authors = ["great-majority <yosaku.ideal+github@gmail.com>"]
 homepage = "https://github.com/great-majority/KoikatuCharaLoader"

@@ -1,19 +1,37 @@
 # KoikatuCharaLoader
-a simple deserializer / serializer for Koikatu / EmotionCreators character data.
+A simple deserializer / serializer for Koikatu / EmotionCreators character data.
 
-# update: "dump as json" is now available.
+# Installation
+You can install this module from [PyPI](https://pypi.org/project/kkloader/).
 ```
-from KoikatuCharaData import KoikatuCharaData
-
-def main():
-    k = KoikatuCharaData.load("sa.png")
-    k.save_json("sa.json")
-
-if __name__=='__main__':
-    main()  
+$ pip install kkloader
+```
+If this does not work, try the following command (for Windows users, maybe).
+```
+$ python -m pip install kkloader
 ```
 
-- `sa.json`
+# Basic Usage
+```python
+$ python
+>>> from kkloader import KoikatuCharaData # Load a module.
+>>> kc = KoikatuCharaData.load("./data/kk_chara.png") # Load a character data.
+>>> kc.parameter["nickname"] # Print character's nickname.
+'かずのん'
+>>> kc.parameter["nickname"] = "chikarin" # Renaming nickname.
+>>> kc.save("./kk_chara_modified.png") # Save to `kk_chara_modified.png`.
+```
+that's it :)
+
+# Export to JSON file
+```
+from kkloader import KoikatuCharaData
+
+k = KoikatuCharaData.load("sa.png")
+k.save_json("sa.json") 
+```
+
+`sa.json`
 ```sa.json
 {
   "product_no": 100,
@@ -35,69 +53,49 @@ if __name__=='__main__':
 ...
 ```
 
-# install
-requires python 3.x and `msgpack`
-```
-$ git clone https://github.com/106-/KoikatuCharaLoader.git
-$ cd KoikatuCharaLoader
-$ pip install -r requirements.txt
-```
+# Recipes
 
-# examples
-
-## renaming character
+### Rename Character's Name
 ```python
-from KoikatuCharaData import KoikatuCharaData
+from kkloader import KoikatuCharaData
 
-def main():
-    k = KoikatuCharaData.load("sa.png")
-    k.parameter["lastname"] = "春野"
-    k.parameter["firstname"] = "千佳"
-    k.parameter["nickname"] = "ちかりん"
-    k.save("si.png")
-
-if __name__=='__main__':
-    main()   
+k = KoikatuCharaData.load("sa.png")
+k.parameter["lastname"] = "春野"
+k.parameter["firstname"] = "千佳"
+k.parameter["nickname"] = "ちかりん"
+k.save("si.png")
 ```
 
-## set the height of character to 50
+### Set the Height of Character to 50
 ```python
-from KoikatuCharaData import KoikatuCharaData
+from kkloader import KoikatuCharaData
 
-def main():
-    k = KoikatuCharaData.load("sa.png")
-    k.custom["body"]["shapeValueBody"][0] = 0.5
-    k.save("si.png")
-
-if __name__=='__main__':
-    main()    
+k = KoikatuCharaData.load("sa.png")
+k.custom["body"]["shapeValueBody"][0] = 0.5
+k.save("si.png")  
 ```
 
-## remove swim cap
+### Remove Swim Cap
 ```python
-from KoikatuCharaData import KoikatuCharaData
+from kkloader import KoikatuCharaData
 
-def main():
-    k = KoikatuCharaData.load("sa.png")
-    for i,c in enumerate(k.coordinate):
-        for n,p in enumerate(c["accessory"]["parts"]):
-            if p["id"] == 5:
-                k.coordinates[i]["accessory"]["parts"][n]["type"] = 120
-    k.save("si.png")
-
-if __name__=='__main__':
-    main()    
+k = KoikatuCharaData.load("sa.png")
+for i,c in enumerate(k.coordinate):
+    for n,p in enumerate(c["accessory"]["parts"]):
+        if p["id"] == 5:
+            k.coordinates[i]["accessory"]["parts"][n]["type"] = 120
+k.save("si.png")  
 ```
 
-## remove under hair
+### Remove Under Hair
 ```python
-from KoikatuCharaData import KoikatuCharaData
+from kkloader import KoikatuCharaData
 k = KoikatuCharaData.load("sa.png")
 kc.Custom.body["underhairId"] = 0
 k.save("si.png")
 ```
 
-# member variables
+# Member Variables
 
 | KoikatuCharaData.* |                  |
 |-------------------:|-----------------:|
@@ -107,5 +105,5 @@ k.save("si.png")
 |   coordinates(List)| contains seven coordinates corresponding to situation.|
 | parameter | personal data (i.e. name, birthday, personality, ..etc)|
 
-# refer
-pngデータの長さの取得にあたり, [martinwu42/pykoikatu](https://github.com/martinwu42/pykoikatu)を参考にしました.
+# Acknowledgements
+- [martinwu42/pykoikatu](https://github.com/martinwu42/pykoikatu)

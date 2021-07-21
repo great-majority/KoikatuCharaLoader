@@ -41,6 +41,7 @@ class KoikatuCharaData:
         kc.blockdata = msg_unpack(load_length(data_stream, "i"))
         lstinfo_raw = load_length(data_stream, "q")
 
+        kc.unknown_datapart_names = []
         for i in kc.blockdata["lstInfo"]:
             data_part = lstinfo_raw[i["pos"]:i["pos"]+i["size"]]
             if i["name"] in globals():
@@ -48,14 +49,19 @@ class KoikatuCharaData:
                 # for backward compatibility
                 setattr(kc, i["name"].lower(), getattr(kc, i["name"]).jsonalizable())
             else:
-                raise ValueError("unsupported lstinfo: %s"%i["name"])
+                setattr(kc, i["name"], data_part)
+                kc.unknown_datapart_names.append(i["name"])
         return kc
 
     def __bytes__(self):
         cumsum = 0
         chara_values = []
-        for i,v in enumerate(self.value_order):
-            serialized, length = getattr(self, v).serialize()
+        for i,v in enumerate(self.blockdata["lstInfo"]):
+            if v["name"] in self.value_order:
+                serialized, length = getattr(self, v["name"]).serialize()
+            else:
+                serialized = getattr(self, v["name"])
+                length = len(serialized)
             self.blockdata["lstInfo"][i]["pos"] = cumsum
             self.blockdata["lstInfo"][i]["size"] = length
             chara_values.append(serialized)

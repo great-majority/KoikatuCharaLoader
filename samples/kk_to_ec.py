@@ -1,17 +1,19 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
-import sys
-import os
-import uuid
 import copy
+import os
+import sys
+import uuid
+
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-from KoikatuCharaData import KoikatuCharaData
-from EmocreCharaData import EmocreCharaData, Coordinate
+from kkloader.EmocreCharaData import Coordinate, EmocreCharaData  # noqa
+from kkloader.KoikatuCharaData import KoikatuCharaData  # noqa
+
 
 def main():
-    kk = KoikatuCharaData.load("./datas/kk_chara.png")
+    kk = KoikatuCharaData.load("./data/kk_chara.png")
     ec = EmocreCharaData()
 
     ec.png_data = kk.png_data
@@ -23,23 +25,11 @@ def main():
     ec.dataid = str(uuid.uuid4()).encode("ascii")
     ec.tags = [0]
     ec.blockdata = {
-        "lstInfo":[
-            {
-                "name": "Custom",
-                "version": "0.0.0"
-            },
-            {
-                "name": "Coordinate",
-                "version": "0.0.1"
-            },
-            {
-                "name": "Parameter",
-                "version": "0.0.0"
-            },
-            {
-                "name": "Status",
-                "version": "0.0.1"
-            },
+        "lstInfo": [
+            {"name": "Custom", "version": "0.0.0"},
+            {"name": "Coordinate", "version": "0.0.1"},
+            {"name": "Parameter", "version": "0.0.0"},
+            {"name": "Status", "version": "0.0.1"},
         ]
     }
 
@@ -52,7 +42,7 @@ def main():
     ec.Custom.face["pupilHeight"] *= 0.92
     ec.Custom.face["hlUpX"] = 0.5
     ec.Custom.face["hlDownX"] = 0.5
-    ec.Custom.face["hlUpY"] = (ec.Custom.face["hlUpY"]/2)+0.25
+    ec.Custom.face["hlUpY"] = (ec.Custom.face["hlUpY"] / 2) + 0.25
     ec.Custom.face["hlUpScale"] = 0.5
     ec.Custom.face["hlDownScale"] = 0.5
     ec.Custom.body["version"] = "0.0.0"
@@ -62,14 +52,17 @@ def main():
     del ec.Coordinate.clothes["parts"][-2]
     del ec.Coordinate.clothes["hideBraOpt"]
     del ec.Coordinate.clothes["hideShortsOpt"]
-    for i,p in enumerate(ec.Coordinate.clothes["parts"]):
-        p["emblemeId"] = [p["emblemeId"], p["emblemeId2"]]
-        del p["emblemeId2"]
+    for i, p in enumerate(ec.Coordinate.clothes["parts"]):
+        if "emblemId2" in p:
+            p["emblemeId"] = [p["emblemeId"], p["emblemeId2"]]
+            del p["emblemeId2"]
+        else:
+            p["emblemeId"] = [p["emblemeId"], p["emblemeId"]]
         ec.Coordinate.clothes["parts"][i] = p
     ec.Coordinate.accessory = kk.Coordinate.coordinates[0]["accessory"]
-    for i,a in enumerate(ec.Coordinate.accessory["parts"]):
+    for i, a in enumerate(ec.Coordinate.accessory["parts"]):
         ec.Coordinate.accessory["parts"][i]["hideTiming"] = 1
-    
+
     ec.Parameter.parameter["version"] = "0.0.0"
     del ec.Parameter.parameter["lastname"]
     del ec.Parameter.parameter["firstname"]
@@ -77,18 +70,20 @@ def main():
     del ec.Parameter.parameter["callType"]
     del ec.Parameter.parameter["clubActivities"]
     del ec.Parameter.parameter["weakPoint"]
-    del ec.Parameter.parameter["awnser"] # this is not my typo
+    del ec.Parameter.parameter["awnser"]  # this is not my typo
     del ec.Parameter.parameter["denial"]
     del ec.Parameter.parameter["attribute"]
     del ec.Parameter.parameter["aggressive"]
     del ec.Parameter.parameter["diligence"]
     del ec.Parameter.parameter["kindness"]
-    name = " ".join(list(map(lambda x: kk.Parameter.parameter[x], ["lastname", "firstname"])))
+    name = " ".join(
+        list(map(lambda x: kk.Parameter.parameter[x], ["lastname", "firstname"]))
+    )
     ec.Parameter.parameter["fullname"] = name
     ec.Parameter.parameter["personality"] = 0
 
     ec.Status.status["version"] = "0.0.1"
-    ec.Status.status["clothesState"] = b"\x00"*8
+    ec.Status.status["clothesState"] = b"\x00" * 8
     ec.Status.status["eyesBlink"] = True
     ec.Status.status["mouthPtn"] = 0
     ec.Status.status["mouthOpenMin"] = 0
@@ -104,7 +99,8 @@ def main():
     del ec.Status.status["backCoordinateType"]
     del ec.Status.status["shoesType"]
 
-    ec.save("./datas/kk_chara_converted.png")
+    ec.save("./data/converted_kk_chara.png")
+
 
 if __name__ == "__main__":
     main()

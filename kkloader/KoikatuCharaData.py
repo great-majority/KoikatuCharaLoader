@@ -1,14 +1,16 @@
 # -*- coding:utf-8 -*-
 
-import struct
-from .funcs import load_length, load_type, msg_pack, msg_unpack, get_png
+import base64
 import io
 import json
-import base64
+import struct
+
+from kkloader.funcs import get_png, load_length, load_type, msg_pack, msg_unpack
+
 
 class KoikatuCharaData:
     value_order = ["Custom", "Coordinate", "Parameter", "Status"]
-    
+
     def __init__(self):
         pass
 
@@ -26,24 +28,24 @@ class KoikatuCharaData:
 
         elif isinstance(filelike, io.BytesIO):
             data_stream = filelike
-        
+
         else:
             ValueError("unsupported input. type:{}".format(type(filelike)))
 
-        kc.png_data = None 
+        kc.png_data = None
         if contains_png:
             kc.png_data = get_png(data_stream)
 
-        kc.product_no = load_type(data_stream, "i") # 100
-        kc.header = load_length(data_stream, "b") # 【KoiKatuChara】
-        kc.version = load_length(data_stream, "b") # 0.0.0
+        kc.product_no = load_type(data_stream, "i")  # 100
+        kc.header = load_length(data_stream, "b")  # 【KoiKatuChara】
+        kc.version = load_length(data_stream, "b")  # 0.0.0
         kc.face_png_data = load_length(data_stream, "i")
         kc.blockdata = msg_unpack(load_length(data_stream, "i"))
         lstinfo_raw = load_length(data_stream, "q")
 
         kc.unknown_datapart_names = []
         for i in kc.blockdata["lstInfo"]:
-            data_part = lstinfo_raw[i["pos"]:i["pos"]+i["size"]]
+            data_part = lstinfo_raw[i["pos"] : i["pos"] + i["size"]]
             if i["name"] in globals():
                 setattr(kc, i["name"], globals()[i["name"]](data_part))
                 # for backward compatibility
@@ -56,7 +58,7 @@ class KoikatuCharaData:
     def __bytes__(self):
         cumsum = 0
         chara_values = []
-        for i,v in enumerate(self.blockdata["lstInfo"]):
+        for i, v in enumerate(self.blockdata["lstInfo"]):
             if v["name"] in self.value_order:
                 serialized, length = getattr(self, v["name"]).serialize()
             else:
@@ -74,19 +76,21 @@ class KoikatuCharaData:
         data_chunks = []
         if self.png_data:
             data_chunks.append(self.png_data)
-        data_chunks.extend([
-            ipack.pack(self.product_no),
-            bpack.pack(len(self.header)),
-            self.header,
-            bpack.pack(len(self.version)),
-            self.version,
-            ipack.pack(len(self.face_png_data)),
-            self.face_png_data,
-            ipack.pack(blockdata_l),
-            blockdata_s,
-            struct.pack("q", len(chara_values)),
-            chara_values
-        ])
+        data_chunks.extend(
+            [
+                ipack.pack(self.product_no),
+                bpack.pack(len(self.header)),
+                self.header,
+                bpack.pack(len(self.version)),
+                self.version,
+                ipack.pack(len(self.face_png_data)),
+                self.face_png_data,
+                ipack.pack(blockdata_l),
+                blockdata_s,
+                struct.pack("q", len(chara_values)),
+                chara_values,
+            ]
+        )
         data = b"".join(data_chunks)
         return data
 
@@ -94,20 +98,22 @@ class KoikatuCharaData:
         data = bytes(self)
         with open(filename, "bw+") as f:
             f.write(data)
-        
+
     def save_json(self, filename, include_image=False):
         datas = {
             "product_no": self.product_no,
             "header": self.header.decode("utf-8"),
             "version": self.version.decode("utf-8"),
-            "blockdata": self.blockdata
+            "blockdata": self.blockdata,
         }
         for v in self.value_order:
             datas.update({v.lower(): getattr(self, v).jsonalizable()})
-        
+
         if include_image:
             datas.update({"png_image": base64.b64encode(self.png_data).decode("ascii")})
-            datas.update({"face_png_image": base64.b64encode(self.face_png_data).decode("ascii")})
+            datas.update(
+                {"face_png_image": base64.b64encode(self.face_png_data).decode("ascii")}
+            )
 
         def bin_to_str(serial):
             if isinstance(serial, io.BufferedRandom) or isinstance(serial, bytes):
@@ -117,15 +123,16 @@ class KoikatuCharaData:
 
         with open(filename, "w+") as f:
             json.dump(datas, f, indent=2, default=bin_to_str)
-    
+
     def __str__(self):
         header = self.header.decode("utf-8")
         name = "{} {} ( {} )".format(
             self.parameter["lastname"],
             self.parameter["firstname"],
-            self.parameter["nickname"]
+            self.parameter["nickname"],
         )
         return "{}, {}".format(header, name)
+
 
 class Custom:
     def __init__(self, data):
@@ -143,12 +150,13 @@ class Custom:
             data.append(field_s)
         serialized = b"".join(data)
         return serialized, len(serialized)
-    
+
     def jsonalizable(self):
         data = {}
         for f in self.fields:
             data.update({f: getattr(self, f)})
         return data
+
 
 class Coordinate:
     def __init__(self, data=None):
@@ -163,7 +171,7 @@ class Coordinate:
             coordinate["enableMakeup"] = bool(load_type(data_stream, "b"))
             coordinate["makeup"] = msg_unpack(load_length(data_stream, "i"))
             self.coordinates.append(coordinate)
-    
+
     def serialize(self):
         data = []
         for i in self.coordinates:
@@ -177,31 +185,37 @@ class Coordinate:
             c.extend([pack.pack(length), serialized])
 
             c.append(struct.pack("b", i["enableMakeup"]))
-            
+
             serialized, length = msg_pack(i["makeup"])
             c.extend([pack.pack(length), serialized])
-            
+
             data.append(b"".join(c))
         serialized_all, length = msg_pack(data)
         return serialized_all, length
-    
+
     def jsonalizable(self):
         return self.coordinates
+
 
 class Parameter:
     def __init__(self, data):
         self.parameter = msg_unpack(data)
+
     def serialize(self):
         serialized, length = msg_pack(self.parameter)
         return serialized, length
+
     def jsonalizable(self):
         return self.parameter
+
 
 class Status:
     def __init__(self, data):
         self.status = msg_unpack(data)
+
     def serialize(self):
         serialized, length = msg_pack(self.status)
         return serialized, length
+
     def jsonalizable(self):
         return self.status

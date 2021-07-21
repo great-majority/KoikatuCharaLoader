@@ -1,15 +1,13 @@
 # -*- coding:utf-8 -*-
 
-import struct
-from .funcs import load_length, load_type, msg_pack, msg_unpack, get_png
-from .EmocreCharaData import EmocreCharaData
-from .EmocreMapData import EmocreMapData
 import io
-import json
-import base64
+
+from kkloader.EmocreCharaData import EmocreCharaData
+from kkloader.EmocreMapData import EmocreMapData
+from kkloader.funcs import get_png, load_length, load_type
+
 
 class EmocreSceneData:
-
     def __init__(self):
         pass
 
@@ -21,18 +19,18 @@ class EmocreSceneData:
             with open(filelike, "br") as f:
                 data = f.read()
             data_stream = io.BytesIO(data)
-        
+
         elif isinstance(filelike, bytes):
             data_stream = io.BytesIO(filelike)
-        
+
         else:
             ValueError("unsupported input. type:{}".format(type(filelike)))
-        
+
         es.png_data = get_png(data_stream)
         es.product_no = load_type(data_stream, "i")
         es.header = load_length(data_stream, "b")
         es.version = load_length(data_stream, "b")
-        
+
         es.language = load_type(data_stream, "i")
         es.userid = load_length(data_stream, "b")
         es.dataid = load_length(data_stream, "b")
@@ -64,7 +62,7 @@ class EmocreSceneData:
         for i in range(length):
             chara = EmocreCharaData.load(data_stream)
             es.charas.append(chara)
-        
+
         length = load_type(data_stream, "i")
         es.maps = []
         for i in range(length):

@@ -1,13 +1,13 @@
 # -*- coding:utf-8 -*-
 
-import struct
-from .funcs import load_length, load_string, load_type, msg_pack, msg_unpack, get_png
 import io
 import json
-import base64
+import struct
+
+from kkloader.funcs import get_png, load_length, load_string, load_type
+
 
 class EmocreMapData:
-
     def __init__(self):
         pass
 
@@ -19,16 +19,16 @@ class EmocreMapData:
             with open(filelike, "br") as f:
                 data = f.read()
             data_stream = io.BytesIO(data)
-        
+
         elif isinstance(filelike, bytes):
             data_stream = io.BytesIO(filelike)
-        
+
         elif isinstance(filelike, io.BytesIO):
             data_stream = filelike
-        
+
         else:
             raise ValueError("unsupported input. type:{}".format(type(filelike)))
-        
+
         em.png_data = None
         if contains_png:
             em.png_data = get_png(data_stream)
@@ -47,7 +47,7 @@ class EmocreMapData:
         if "0.0.5.2" < em.version.decode():
             em.objects_num = load_type(data_stream, "i")
             em.map_scene = load_type(data_stream, "b")
-        
+
         em.nodes = []
         length = load_type(data_stream, "i")
         for i in range(length):
@@ -73,7 +73,7 @@ class EmocreMapData:
         em.map_type = load_type(data_stream, "i")
 
         return em
-    
+
     def __bytes__(self):
         data = io.BytesIO()
         if self.png_data:
@@ -122,15 +122,18 @@ class EmocreMapData:
         with open(filename, "bw+") as f:
             f.write(data)
 
+
 class Quantity:
     def __init__(self, data_stream):
         self.pos = json.loads(load_length(data_stream, "b"))
         self.angle = json.loads(load_length(data_stream, "b"))
         self.scale = json.loads(load_length(data_stream, "b"))
+
     def serialize(self, datas):
         write_json(datas, self.pos)
         write_json(datas, self.angle)
         write_json(datas, self.scale)
+
 
 class Node:
     def __init__(self, data_stream, version, nodetype=None, skip=False):
@@ -140,7 +143,7 @@ class Node:
         if not skip:
             self.treestate = load_type(data_stream, "i")
             self.visible = load_type(data_stream, "b")
-        
+
         if nodetype == 1:
             self.package = load_type(data_stream, "i")
             self.no = load_type(data_stream, "i")
@@ -154,7 +157,7 @@ class Node:
                 pattern["key"] = load_type(data_stream, "i")
                 pattern["clamp"] = load_type(data_stream, "b")
                 pattern["uv"] = json.loads(load_length(data_stream, "b"))
-                pattern["rot"] =  load_type(data_stream, "f")
+                pattern["rot"] = load_type(data_stream, "f")
                 self.patterns.append(pattern)
             self.alpha = load_type(data_stream, "f")
             self.linecolor = json.loads(load_length(data_stream, "b"))
@@ -172,7 +175,7 @@ class Node:
                 child_nodetype = load_type(data_stream, "i")
                 self.nodes.append(Node(data_stream, version, child_nodetype))
 
-        elif nodetype==3:
+        elif nodetype == 3:
             self.name = load_string(data_stream)
             self.nodes = []
             length = load_type(data_stream, "i")
@@ -180,7 +183,7 @@ class Node:
                 child_nodetype = load_type(data_stream, "i")
                 self.nodes.append(Node(data_stream, version, child_nodetype))
 
-        elif nodetype==4:
+        elif nodetype == 4:
             self.name = load_length(data_stream, "b")
             self.center = json.loads(load_length(data_stream, "b"))
             self.size = json.loads(load_length(data_stream, "b"))
@@ -196,7 +199,7 @@ class Node:
         if hasattr(self, "treestate"):
             write_type(datas, self.treestate, "i")
             write_type(datas, self.visible, "b")
-        
+
         if self.nodetype == 1:
             write_type(datas, self.package, "i")
             write_type(datas, self.no, "i")
@@ -222,14 +225,14 @@ class Node:
             for i in self.nodes:
                 write_type(datas, i.nodetype, "i")
                 i.serialize(datas)
-        
+
         elif self.nodetype == 3:
             write_string(datas, self.name)
             write_type(datas, len(self.nodes), "i")
             for i in self.nodes:
                 write_type(datas, i.nodetype, "i")
                 i.serialize(datas)
-        
+
         elif self.nodetype == 4:
             write_string(datas, self.name)
             write_json(datas, self.center)
@@ -239,12 +242,15 @@ class Node:
                 write_type(datas, i.nodetype, "i")
                 i.serialize(datas)
 
+
 def write_json(datas, value):
-    converted = json.dumps(value, separators=(',', ':')).encode()
+    converted = json.dumps(value, separators=(",", ":")).encode()
     write_string(datas, converted)
+
 
 def write_type(data_stream, value, format):
     data_stream.write(struct.pack(format, value))
+
 
 def write_string(datas, value):
     datas.write(struct.pack("b", len(value)))

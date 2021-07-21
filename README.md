@@ -89,6 +89,14 @@ if __name__=='__main__':
     main()    
 ```
 
+## remove under hair
+```python
+from KoikatuCharaData import KoikatuCharaData
+k = KoikatuCharaData.load("sa.png")
+kc.Custom.body["underhairId"] = 0
+k.save("si.png")
+```
+
 # member variables
 
 | KoikatuCharaData.* |                  |

@@ -9,7 +9,7 @@ from kkloader.funcs import get_png, load_length, load_type, msg_pack, msg_unpack
 
 
 class KoikatuCharaData:
-    value_order = ["Custom", "Coordinate", "Parameter", "Status"]
+    readable_formats = ["Custom", "Coordinate", "Parameter", "Status"]
 
     def __init__(self):
         pass
@@ -40,36 +40,39 @@ class KoikatuCharaData:
         kc.header = load_length(data_stream, "b")  # 【KoiKatuChara】
         kc.version = load_length(data_stream, "b")  # 0.0.0
         kc.face_png_data = load_length(data_stream, "i")
-        kc.blockdata = msg_unpack(load_length(data_stream, "i"))
+        lstinfo_index = msg_unpack(load_length(data_stream, "i"))
         lstinfo_raw = load_length(data_stream, "q")
 
-        kc.unknown_datapart_names = []
-        for i in kc.blockdata["lstInfo"]:
-            data_part = lstinfo_raw[i["pos"] : i["pos"] + i["size"]]
-            if i["name"] in globals():
-                setattr(kc, i["name"], globals()[i["name"]](data_part))
-                # for backward compatibility
-                setattr(kc, i["name"].lower(), getattr(kc, i["name"]).jsonalizable())
+        kc.unknown_blockdata = []
+        kc.blockdata = []
+        for i in lstinfo_index["lstInfo"]:
+            name = i["name"]
+            pos = i["pos"]
+            size = i["size"]
+            version = i["version"]
+            data = lstinfo_raw[pos : pos + size]
+
+            kc.blockdata.append(name)
+            if name in kc.readable_formats:
+                setattr(kc, name, globals()[name](data, version))
             else:
-                setattr(kc, i["name"], data_part)
-                kc.unknown_datapart_names.append(i["name"])
+                setattr(kc, name, UnknownBlockData(name, data, version))
+                kc.unknown_blockdata.append(name)
         return kc
 
     def __bytes__(self):
         cumsum = 0
         chara_values = []
-        for i, v in enumerate(self.blockdata["lstInfo"]):
-            if v["name"] in self.value_order:
-                serialized, length = getattr(self, v["name"]).serialize()
-            else:
-                serialized = getattr(self, v["name"])
-                length = len(serialized)
-            self.blockdata["lstInfo"][i]["pos"] = cumsum
-            self.blockdata["lstInfo"][i]["size"] = length
-            chara_values.append(serialized)
-            cumsum += length
+        lstinfos = []
+        for v in self.blockdata:
+            data, name, version = getattr(self, v).serialize()
+            lstinfos.append(
+                {"name": name, "version": version, "pos": cumsum, "size": len(data)}
+            )
+            chara_values.append(data)
+            cumsum += len(data)
         chara_values = b"".join(chara_values)
-        blockdata_s, blockdata_l = msg_pack(self.blockdata)
+        blockdata_s, blockdata_l = msg_pack({"lstInfo": lstinfos})
 
         ipack = struct.Struct("i")
         bpack = struct.Struct("b")
@@ -106,8 +109,8 @@ class KoikatuCharaData:
             "version": self.version.decode("utf-8"),
             "blockdata": self.blockdata,
         }
-        for v in self.value_order:
-            datas.update({v.lower(): getattr(self, v).jsonalizable()})
+        for v in self.blockdata:
+            datas.update({v: getattr(self, v).jsonalizable()})
 
         if include_image:
             datas.update({"png_image": base64.b64encode(self.png_data).decode("ascii")})
@@ -134,47 +137,62 @@ class KoikatuCharaData:
         return "{}, {}".format(header, name)
 
 
-class Custom:
-    def __init__(self, data):
+class BlockData:
+    def __init__(self, name="Blockdata", data=None, version="0.0.0"):
+        self.name = name
+        self.data = msg_unpack(data)
+        self.version = version
+
+    def serialize(self):
+        data, _ = msg_pack(self.data)
+        return data, self.name, self.version
+
+    def jsonalizable(self):
+        return self.data
+
+
+class Custom(BlockData):
+    fields = ["face", "body", "hair"]
+
+    def __init__(self, data, version):
+        self.name = "Custom"
+        self.version = version
+        self.data = {}
         data_stream = io.BytesIO(data)
-        self.fields = ["face", "body", "hair"]
         for f in self.fields:
-            setattr(self, f, msg_unpack(load_length(data_stream, "i")))
+            self.data[f] = msg_unpack(load_length(data_stream, "i"))
 
     def serialize(self):
         data = []
         pack = struct.Struct("i")
         for f in self.fields:
-            field_s, length = msg_pack(getattr(self, f))
+            field_s, length = msg_pack(self.data[f])
             data.append(pack.pack(length))
             data.append(field_s)
         serialized = b"".join(data)
-        return serialized, len(serialized)
-
-    def jsonalizable(self):
-        data = {}
-        for f in self.fields:
-            data.update({f: getattr(self, f)})
-        return data
+        return serialized, self.name, self.version
 
 
-class Coordinate:
-    def __init__(self, data=None):
+class Coordinate(BlockData):
+    def __init__(self, data, version):
+        self.name = "Coordinate"
+        self.version = version
         if data is None:
             return
-        self.coordinates = []
+        self.data = []
         for c in msg_unpack(data):
-            coordinate = {}
             data_stream = io.BytesIO(c)
-            coordinate["clothes"] = msg_unpack(load_length(data_stream, "i"))
-            coordinate["accessory"] = msg_unpack(load_length(data_stream, "i"))
-            coordinate["enableMakeup"] = bool(load_type(data_stream, "b"))
-            coordinate["makeup"] = msg_unpack(load_length(data_stream, "i"))
-            self.coordinates.append(coordinate)
+            c = {
+                "clothes": msg_unpack(load_length(data_stream, "i")),
+                "accessory": msg_unpack(load_length(data_stream, "i")),
+                "enableMakeup": bool(load_type(data_stream, "b")),
+                "makeup": msg_unpack(load_length(data_stream, "i")),
+            }
+            self.data.append(c)
 
     def serialize(self):
         data = []
-        for i in self.coordinates:
+        for i in self.data:
             c = []
             pack = struct.Struct("i")
 
@@ -191,31 +209,24 @@ class Coordinate:
 
             data.append(b"".join(c))
         serialized_all, length = msg_pack(data)
-        return serialized_all, length
-
-    def jsonalizable(self):
-        return self.coordinates
+        return serialized_all, self.name, self.version
 
 
-class Parameter:
-    def __init__(self, data):
-        self.parameter = msg_unpack(data)
-
-    def serialize(self):
-        serialized, length = msg_pack(self.parameter)
-        return serialized, length
-
-    def jsonalizable(self):
-        return self.parameter
+class Parameter(BlockData):
+    def __init__(self, data, version):
+        super().__init__(name="Parameter", data=data, version=version)
 
 
-class Status:
-    def __init__(self, data):
-        self.status = msg_unpack(data)
+class Status(BlockData):
+    def __init__(self, data, version):
+        super().__init__(name="Status", data=data, version=version)
+
+
+class UnknownBlockData(BlockData):
+    def __init__(self, data, name, version):
+        self.data = data
+        self.name = name
+        self.version = version
 
     def serialize(self):
-        serialized, length = msg_pack(self.status)
-        return serialized, length
-
-    def jsonalizable(self):
-        return self.status
+        return self.data, self.name, self.version

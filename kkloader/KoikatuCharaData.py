@@ -16,7 +16,7 @@ def bin_to_str(serial):
 
 
 class KoikatuCharaData:
-    readable_formats = ["Custom", "Coordinate", "Parameter", "Status", "About"]
+    readable_formats = ["Custom", "Coordinate", "Parameter", "Status", "About", "KKEx"]
 
     def __init__(self):
         pass
@@ -303,6 +303,9 @@ class About(BlockData):
     def __init__(self, data, version):
         super().__init__(name="About", data=data, version=version)
 
+class KKEx(BlockData):
+    def __init__(self, data, version):
+        super().__init__(name="KKEx", data=data, version=version)
 
 class UnknownBlockData(BlockData):
     def __init__(self, name, data, version):

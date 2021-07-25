@@ -28,6 +28,15 @@ def test_load_emocre_character():
     assert hasattr(ec, "Status")
 
 
+def test_load_character():
+    kc = KoikatuCharaData.load("./data/kk_mod_chara.png")
+    assert hasattr(kc, "Custom")
+    assert hasattr(kc, "Coordinate")
+    assert hasattr(kc, "Parameter")
+    assert hasattr(kc, "Status")
+    assert hasattr(kc, "KKEx")
+
+
 def test_save_character():
     tmpfile = tempfile.NamedTemporaryFile()
     kc = KoikatuCharaData.load("./data/kk_chara.png")

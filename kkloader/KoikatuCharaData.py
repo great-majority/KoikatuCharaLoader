@@ -21,9 +21,9 @@ class KoikatuCharaData:
     def __init__(self):
         pass
 
-    @staticmethod
-    def load(filelike, contains_png=True):
-        kc = KoikatuCharaData()
+    @classmethod
+    def load(cls, filelike, contains_png=True):
+        kc = cls()
 
         if isinstance(filelike, str):
             with open(filelike, "br") as f:
@@ -39,19 +39,27 @@ class KoikatuCharaData:
         else:
             ValueError("unsupported input. type:{}".format(type(filelike)))
 
-        kc.image = None
-        if contains_png:
-            kc.image = get_png(data_stream)
+        kc._load_header(data_stream, contains_image=contains_png)
+        kc._load_blockdata(data_stream)
 
-        kc.product_no = load_type(data_stream, "i")  # 100
-        kc.header = load_length(data_stream, "b")  # 【KoiKatuChara】
-        kc.version = load_length(data_stream, "b")  # 0.0.0
-        kc.face_image = load_length(data_stream, "i")
-        lstinfo_index = msg_unpack(load_length(data_stream, "i"))
-        lstinfo_raw = load_length(data_stream, "q")
+        return kc
 
-        kc.unknown_blockdata = []
-        kc.blockdata = []
+    def _load_header(self, data, **kwargs):
+        self.image = None
+        if "contains_image" in kwargs and kwargs["contains_image"]:
+            self.image = get_png(data)
+
+        self.product_no = load_type(data, "i")  # 100
+        self.header = load_length(data, "b")  # 【KoiKatuChara】
+        self.version = load_length(data, "b")  # 0.0.0
+        self.face_image = load_length(data, "i")
+
+    def _load_blockdata(self, data):
+        lstinfo_index = msg_unpack(load_length(data, "i"))
+        lstinfo_raw = load_length(data, "q")
+
+        self.unknown_blockdata = []
+        self.blockdata = []
         for i in lstinfo_index["lstInfo"]:
             name = i["name"]
             pos = i["pos"]
@@ -59,28 +67,19 @@ class KoikatuCharaData:
             version = i["version"]
             data = lstinfo_raw[pos : pos + size]
 
-            kc.blockdata.append(name)
-            if name in kc.readable_formats:
-                setattr(kc, name, globals()[name](data, version))
+            self.blockdata.append(name)
+            if name in self.readable_formats:
+                setattr(self, name, globals()[name](data, version))
             else:
-                setattr(kc, name, UnknownBlockData(name, data, version))
-                kc.unknown_blockdata.append(name)
-        return kc
+                setattr(self, name, UnknownBlockData(name, data, version))
+                self.unknown_blockdata.append(name)
 
     def __bytes__(self):
-        cumsum = 0
-        chara_values = []
-        lstinfos = []
-        for v in self.blockdata:
-            data, name, version = getattr(self, v).serialize()
-            lstinfos.append(
-                {"name": name, "version": version, "pos": cumsum, "size": len(data)}
-            )
-            chara_values.append(data)
-            cumsum += len(data)
-        chara_values = b"".join(chara_values)
-        blockdata_s, blockdata_l = msg_pack({"lstInfo": lstinfos})
+        header_bytes = self._make_bytes_header()
+        blockdata_bytes = self._make_bytes_blockdata()
+        return header_bytes + blockdata_bytes
 
+    def _make_bytes_header(self):
         ipack = struct.Struct("i")
         bpack = struct.Struct("b")
         data_chunks = []
@@ -95,14 +94,33 @@ class KoikatuCharaData:
                 self.version,
                 ipack.pack(len(self.face_image)),
                 self.face_image,
-                ipack.pack(blockdata_l),
-                blockdata_s,
-                struct.pack("q", len(chara_values)),
-                chara_values,
             ]
         )
-        data = b"".join(data_chunks)
-        return data
+        return b"".join(data_chunks)
+
+    def _make_bytes_blockdata(self):
+        cumsum = 0
+        chara_values = []
+        lstinfos = []
+        for v in self.blockdata:
+            data, name, version = getattr(self, v).serialize()
+            lstinfos.append(
+                {"name": name, "version": version, "pos": cumsum, "size": len(data)}
+            )
+            chara_values.append(data)
+            cumsum += len(data)
+        chara_values = b"".join(chara_values)
+
+        blockdata_s, blockdata_l = msg_pack({"lstInfo": lstinfos})
+        ipack = struct.Struct("i")
+
+        data_chunks = [
+            ipack.pack(blockdata_l),
+            blockdata_s,
+            struct.pack("q", len(chara_values)),
+            chara_values,
+        ]
+        return b"".join(data_chunks)
 
     def save(self, filename):
         data = bytes(self)
@@ -110,23 +128,30 @@ class KoikatuCharaData:
             f.write(data)
 
     def save_json(self, filename, include_image=False):
-        datas = {
+        data = {}
+        header_data = self._make_dict_header()
+        data.update(header_data)
+
+        for v in self.blockdata:
+            data.update({v: getattr(self, v).jsonalizable()})
+
+        with open(filename, "w+") as f:
+            json.dump(data, f, indent=2, default=bin_to_str)
+
+    def _make_dict_header(self, **kwargs):
+        data = {
             "product_no": self.product_no,
             "header": self.header.decode("utf-8"),
             "version": self.version.decode("utf-8"),
             "blockdata": self.blockdata,
         }
-        for v in self.blockdata:
-            datas.update({v: getattr(self, v).jsonalizable()})
-
-        if include_image:
-            datas.update({"image": base64.b64encode(self.image).decode("ascii")})
-            datas.update(
+        if "include_image" in kwargs and kwargs["include_image"]:
+            if self.image:
+                data.update({"image": base64.b64encode(self.image).decode("ascii")})
+            data.update(
                 {"face_image": base64.b64encode(self.face_image).decode("ascii")}
             )
-
-        with open(filename, "w+") as f:
-            json.dump(datas, f, indent=2, default=bin_to_str)
+        return data
 
     def __str__(self):
         header = self.header.decode("utf-8")
@@ -204,36 +229,57 @@ class Coordinate(BlockData):
         self.version = version
         if data is None:
             return
-        self.data = []
-        for c in msg_unpack(data):
-            data_stream = io.BytesIO(c)
-            c = {
+
+        if version == "0.0.0":
+            self.data = []
+            for c in msg_unpack(data):
+                data_stream = io.BytesIO(c)
+                c = {
+                    "clothes": msg_unpack(load_length(data_stream, "i")),
+                    "accessory": msg_unpack(load_length(data_stream, "i")),
+                    "enableMakeup": bool(load_type(data_stream, "b")),
+                    "makeup": msg_unpack(load_length(data_stream, "i")),
+                }
+                self.data.append(c)
+
+        # エモクリのキャラデータはこのバージョン
+        elif version == "0.0.1":
+            data_stream = io.BytesIO(data)
+            self.data = {
                 "clothes": msg_unpack(load_length(data_stream, "i")),
                 "accessory": msg_unpack(load_length(data_stream, "i")),
-                "enableMakeup": bool(load_type(data_stream, "b")),
-                "makeup": msg_unpack(load_length(data_stream, "i")),
             }
-            self.data.append(c)
 
     def serialize(self):
-        data = []
-        for i in self.data:
-            c = []
+        if self.version == "0.0.0":
+            data = []
+            for i in self.data:
+                c = []
+                pack = struct.Struct("i")
+
+                serialized, length = msg_pack(i["clothes"])
+                c.extend([pack.pack(length), serialized])
+
+                serialized, length = msg_pack(i["accessory"])
+                c.extend([pack.pack(length), serialized])
+
+                c.append(struct.pack("b", i["enableMakeup"]))
+
+                serialized, length = msg_pack(i["makeup"])
+                c.extend([pack.pack(length), serialized])
+
+                data.append(b"".join(c))
+            serialized_all, _ = msg_pack(data)
+
+        elif self.version == "0.0.1":
+            data = []
             pack = struct.Struct("i")
+            serialized, length = msg_pack(self.data["clothes"])
+            data.extend([pack.pack(length), serialized])
+            serialized, length = msg_pack(self.data["accessory"])
+            data.extend([pack.pack(length), serialized])
+            serialized_all = b"".join(data)
 
-            serialized, length = msg_pack(i["clothes"])
-            c.extend([pack.pack(length), serialized])
-
-            serialized, length = msg_pack(i["accessory"])
-            c.extend([pack.pack(length), serialized])
-
-            c.append(struct.pack("b", i["enableMakeup"]))
-
-            serialized, length = msg_pack(i["makeup"])
-            c.extend([pack.pack(length), serialized])
-
-            data.append(b"".join(c))
-        serialized_all, length = msg_pack(data)
         return serialized_all, self.name, self.version
 
 

@@ -8,6 +8,13 @@ import struct
 from kkloader.funcs import get_png, load_length, load_type, msg_pack, msg_unpack
 
 
+def bin_to_str(serial):
+    if isinstance(serial, io.BufferedRandom) or isinstance(serial, bytes):
+        return base64.b64encode(bytes(serial)).decode("ascii")
+    else:
+        raise TypeError("{} is not JSON serializable".format(serial))
+
+
 class KoikatuCharaData:
     readable_formats = ["Custom", "Coordinate", "Parameter", "Status"]
 
@@ -118,12 +125,6 @@ class KoikatuCharaData:
                 {"face_image": base64.b64encode(self.face_image).decode("ascii")}
             )
 
-        def bin_to_str(serial):
-            if isinstance(serial, io.BufferedRandom) or isinstance(serial, bytes):
-                return base64.b64encode(bytes(serial)).decode("ascii")
-            else:
-                raise TypeError("{} is not JSON serializable".format(serial))
-
         with open(filename, "w+") as f:
             json.dump(datas, f, indent=2, default=bin_to_str)
 
@@ -167,6 +168,9 @@ class BlockData:
 
     def __setitem__(self, key, value):
         self.data[key] = value
+
+    def prettify(self):
+        print(json.dumps(self.jsonalizable(), indent=2, default=bin_to_str))
 
 
 class Custom(BlockData):
@@ -241,10 +245,19 @@ class Status(BlockData):
 
 
 class UnknownBlockData(BlockData):
-    def __init__(self, data, name, version):
+    def __init__(self, name, data, version):
         self.data = data
         self.name = name
         self.version = version
 
     def serialize(self):
         return self.data, self.name, self.version
+
+    def __getitem__(self, key):
+        raise ValueError
+
+    def __setitem__(self, key, value):
+        raise ValueError
+
+    def prettify(self):
+        return self.data

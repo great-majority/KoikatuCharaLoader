@@ -5,7 +5,6 @@ from kkloader.funcs import get_png, load_length, load_type
 
 
 class EmocreCharaData(kkloader.KoikatuCharaData):
-    
     def __init__(self):
         pass
 

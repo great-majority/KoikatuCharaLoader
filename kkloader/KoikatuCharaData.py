@@ -16,7 +16,7 @@ def bin_to_str(serial):
 
 
 class KoikatuCharaData:
-    readable_formats = ["Custom", "Coordinate", "Parameter", "Status"]
+    readable_formats = ["Custom", "Coordinate", "Parameter", "Status", "About"]
 
     def __init__(self):
         pass
@@ -170,7 +170,10 @@ class BlockData:
         self.data[key] = value
 
     def prettify(self):
-        print(json.dumps(self.jsonalizable(), indent=2, default=bin_to_str))
+        print(self.__str__())
+
+    def __str__(self):
+        return json.dumps(self.jsonalizable(), indent=2, default=bin_to_str)
 
 
 class Custom(BlockData):
@@ -242,6 +245,11 @@ class Parameter(BlockData):
 class Status(BlockData):
     def __init__(self, data, version):
         super().__init__(name="Status", data=data, version=version)
+
+
+class About(BlockData):
+    def __init__(self, data, version):
+        super().__init__(name="About", data=data, version=version)
 
 
 class UnknownBlockData(BlockData):

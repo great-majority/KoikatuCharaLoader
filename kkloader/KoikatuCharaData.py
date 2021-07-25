@@ -136,6 +136,12 @@ class KoikatuCharaData:
         )
         return "{}, {}".format(header, name)
 
+    def __getitem__(self, key):
+        if key in self.blockdata:
+            return getattr(self, key)
+        else:
+            raise ValueError("no such blockdata.")
+
 
 class BlockData:
     def __init__(self, name="Blockdata", data=None, version="0.0.0"):
@@ -149,6 +155,9 @@ class BlockData:
 
     def jsonalizable(self):
         return self.data
+
+    def __getitem__(self, key):
+        return self.data[key]
 
 
 class Custom(BlockData):

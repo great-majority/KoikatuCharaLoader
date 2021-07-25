@@ -32,33 +32,44 @@ def main():
     ec.Parameter = copy.deepcopy(kk.Parameter)
     ec.Status = copy.deepcopy(kk.Status)
 
+    ec.Custom.version = "0.0.0"
+    ec.Coordinate.version = "0.0.1"
+    ec.Parameter.version = "0.0.0"
+    ec.Status.version = "0.0.1"
+
     ec.Custom["face"]["version"] = "0.0.1"
     ec.Custom["face"]["pupilHeight"] *= 0.92
     ec.Custom["face"]["hlUpX"] = 0.5
     ec.Custom["face"]["hlDownX"] = 0.5
+    ec.Custom["face"]["hlDownY"] = 0.75
     ec.Custom["face"]["hlUpY"] = (ec.Custom["face"]["hlUpY"] / 2) + 0.25
     ec.Custom["face"]["hlUpScale"] = 0.5
     ec.Custom["face"]["hlDownScale"] = 0.5
     ec.Custom["body"]["version"] = "0.0.0"
+    ec.Custom["body"]["typeBone"] = 0
     ec.Custom["hair"]["version"] = "0.0.1"
+
+    for i, h in enumerate(ec.Custom["hair"]["parts"]):
+        h["noShake"] = False
+        ec.Custom["hair"]["parts"][i] = h
 
     ec.Coordinate["clothes"] = kk.Coordinate[0]["clothes"]
     del ec.Coordinate["clothes"]["parts"][-2]
     del ec.Coordinate["clothes"]["hideBraOpt"]
     del ec.Coordinate["clothes"]["hideShortsOpt"]
     for i, p in enumerate(ec.Coordinate["clothes"]["parts"]):
-        if "emblemId2" in p:
-            ec.Coordinate["clothes"]["parts"][i]["emblemeId"] = [
-                p["emblemeId"],
-                p["emblemeId2"],
-            ]
-            del ec.Coordinate["clothes"]["parts"][i]["emblemeId2"]
+        if "emblemeId2" in p:
+            p["emblemeId"] = [p["emblemeId"], p["emblemeId2"]]
+            del p["emblemeId2"]
         else:
-            ec.Coordinate["clothes"]["parts"][i]["emblemeId"] = [0, 0]
+            p["emblemeId"] = [p["emblemeId"], 0]
+        p["hideOpt"] = [False, False]
+        p["sleevesType"] = 0
         ec.Coordinate["clothes"]["parts"][i] = p
     ec.Coordinate["accessory"] = kk.Coordinate[0]["accessory"]
     for i, a in enumerate(ec.Coordinate["accessory"]["parts"]):
         ec.Coordinate["accessory"]["parts"][i]["hideTiming"] = 1
+        ec.Coordinate["accessory"]["parts"][i]["noShake"] = False
 
     ec.Parameter["version"] = "0.0.0"
     del ec.Parameter["lastname"]
@@ -75,7 +86,8 @@ def main():
     del ec.Parameter["kindness"]
     name = " ".join(list(map(lambda x: kk.Parameter[x], ["lastname", "firstname"])))
     ec.Parameter["fullname"] = name
-    ec.Parameter["personality"] = 1
+    ec.Parameter["personality"] = 0
+    ec.Parameter["exType"] = 0
 
     ec.Status["version"] = "0.0.1"
     ec.Status["clothesState"] = b"\x00" * 8
@@ -86,10 +98,13 @@ def main():
     ec.Status["mouthFixed"] = False
     ec.Status["eyesLookPtn"] = 0
     ec.Status["neckLookPtn"] = 0
-    ec.Status["visibleSonAlways"] = False
+    ec.Status["visibleSonAlways"] = True
     ec.Status["enableSonDirection"] = False
     ec.Status["sonDirectionX"] = 0
     ec.Status["sonDirectionY"] = 0
+    ec.Status["enableShapeHand"] = [False, False]
+    ec.Status["shapeHandPtn"] = [2, 2, [0, 0, 0, 0]]
+    ec.Status["shapeHandBlendValue"] = [0, 0]
     del ec.Status["coordinateType"]
     del ec.Status["backCoordinateType"]
     del ec.Status["shoesType"]

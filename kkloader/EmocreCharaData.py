@@ -5,8 +5,7 @@ from kkloader.funcs import get_png, load_length, load_type
 
 
 class EmocreCharaData(kkloader.KoikatuCharaData):
-    value_order = ["Custom", "Coordinate", "Parameter", "Status"]
-
+    
     def __init__(self):
         pass
 

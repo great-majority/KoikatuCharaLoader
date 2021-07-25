@@ -32,14 +32,14 @@ class KoikatuCharaData:
         else:
             ValueError("unsupported input. type:{}".format(type(filelike)))
 
-        kc.png_data = None
+        kc.image = None
         if contains_png:
-            kc.png_data = get_png(data_stream)
+            kc.image = get_png(data_stream)
 
         kc.product_no = load_type(data_stream, "i")  # 100
         kc.header = load_length(data_stream, "b")  # 【KoiKatuChara】
         kc.version = load_length(data_stream, "b")  # 0.0.0
-        kc.face_png_data = load_length(data_stream, "i")
+        kc.face_image = load_length(data_stream, "i")
         lstinfo_index = msg_unpack(load_length(data_stream, "i"))
         lstinfo_raw = load_length(data_stream, "q")
 
@@ -77,8 +77,8 @@ class KoikatuCharaData:
         ipack = struct.Struct("i")
         bpack = struct.Struct("b")
         data_chunks = []
-        if self.png_data:
-            data_chunks.append(self.png_data)
+        if self.image:
+            data_chunks.append(self.image)
         data_chunks.extend(
             [
                 ipack.pack(self.product_no),
@@ -86,8 +86,8 @@ class KoikatuCharaData:
                 self.header,
                 bpack.pack(len(self.version)),
                 self.version,
-                ipack.pack(len(self.face_png_data)),
-                self.face_png_data,
+                ipack.pack(len(self.face_image)),
+                self.face_image,
                 ipack.pack(blockdata_l),
                 blockdata_s,
                 struct.pack("q", len(chara_values)),
@@ -113,9 +113,9 @@ class KoikatuCharaData:
             datas.update({v: getattr(self, v).jsonalizable()})
 
         if include_image:
-            datas.update({"png_image": base64.b64encode(self.png_data).decode("ascii")})
+            datas.update({"image": base64.b64encode(self.image).decode("ascii")})
             datas.update(
-                {"face_png_image": base64.b64encode(self.face_png_data).decode("ascii")}
+                {"face_image": base64.b64encode(self.face_image).decode("ascii")}
             )
 
         def bin_to_str(serial):

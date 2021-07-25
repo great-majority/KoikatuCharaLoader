@@ -37,6 +37,8 @@ A typical Koikatsu character data contains the following blockdata:
 | Coordinate        | Values for clothes and accessories worn by characters.       |
 | Parameter         | Values for character names, birthdays, preferences, etc.     |
 | Status            | Values for clothed states, etc. (I'm not sure how they are used in the game) |
+| About             | userID & dataID (added from Koikatu Sunshine)                |
+| KKEx              | Values used in MOD                                           |
 
 You can check which block data exists from `blockdata` in KoikatuCharaData.
 ```
@@ -44,11 +46,6 @@ You can check which block data exists from `blockdata` in KoikatuCharaData.
 ['Custom', 'Coordinate', 'Parameter', 'Status']
 ```
 If there is block data in an unknown format, it can be checked with `unknown_blockdata`.
-```
->>> kk_mod_chara.unknown_blockdata
-['KKEx']
-```
-`KKEx` is included in the character data saved by Koikatsu with MOD.
 
 ### Access to Blockdata
 The blockdata can be accessed as a member variable of the `KoikatuCharaData` class, or accessed as a dictionary.

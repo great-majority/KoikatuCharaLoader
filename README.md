@@ -1,6 +1,8 @@
 # KoikatuCharaLoader
 A simple deserializer / serializer for Koikatu / EmotionCreators character data.
 
+[日本語マニュアルがここにあります](README.ja.md)
+
 # Installation
 You can install this module from [PyPI](https://pypi.org/project/kkloader/).
 ```
@@ -47,6 +49,16 @@ If there is block data in an unknown format, it can be checked with `unknown_blo
 ['KKEx']
 ```
 `KKEx` is included in the character data saved by Koikatsu with MOD.
+
+### Access to Blockdata
+The blockdata can be accessed as a member variable of the `KoikatuCharaData` class, or accessed as a dictionary.
+```python
+>>> kc.Custom
+<kkloader.KoikatuCharaData.Custom object at 0x7f406bf18460>
+>>> kc["Custom"]
+<kkloader.KoikatuCharaData.Custom object at 0x7f406bf18460>
+```
+So, these lines both access the same `kc.Custom`.
 
 ### Find Variables
 

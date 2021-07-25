@@ -142,6 +142,12 @@ class KoikatuCharaData:
         else:
             raise ValueError("no such blockdata.")
 
+    def __setitem__(self, key, value):
+        if key in self.blockdata:
+            return setattr(self, key, value)
+        else:
+            raise ValueError("no such blockdata.")
+
 
 class BlockData:
     def __init__(self, name="Blockdata", data=None, version="0.0.0"):
@@ -158,6 +164,9 @@ class BlockData:
 
     def __getitem__(self, key):
         return self.data[key]
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
 
 
 class Custom(BlockData):

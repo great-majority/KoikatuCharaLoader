@@ -132,8 +132,11 @@ class KoikatuCharaData:
         header_data = self._make_dict_header()
         data.update(header_data)
 
+        versions = {}
         for v in self.blockdata:
             data.update({v: getattr(self, v).jsonalizable()})
+            versions[v] = getattr(self, v).version
+        data["blockdata_versions"] = versions
 
         with open(filename, "w+") as f:
             json.dump(data, f, indent=2, default=bin_to_str)

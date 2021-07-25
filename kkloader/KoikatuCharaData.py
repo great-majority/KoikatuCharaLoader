@@ -156,9 +156,9 @@ class KoikatuCharaData:
     def __str__(self):
         header = self.header.decode("utf-8")
         name = "{} {} ( {} )".format(
-            self.parameter["lastname"],
-            self.parameter["firstname"],
-            self.parameter["nickname"],
+            self["Parameter"]["lastname"],
+            self["Parameter"]["firstname"],
+            self["Parameter"]["nickname"],
         )
         return "{}, {}".format(header, name)
 
@@ -193,6 +193,9 @@ class BlockData:
 
     def __setitem__(self, key, value):
         self.data[key] = value
+
+    def __delitem__(self, key):
+        del self.data[key]
 
     def prettify(self):
         print(self.__str__())

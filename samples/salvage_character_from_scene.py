@@ -38,9 +38,11 @@ def main():
     for c in charas:
         print(c)
         # use face png data instead of png data.
-        c.png_data = copy.deepcopy(c.face_png_data)
+        c.image = copy.deepcopy(c.face_image)
         name = "{}{}({})".format(
-            c.parameter["lastname"], c.parameter["firstname"], c.parameter["nickname"]
+            c["Parameter"]["lastname"],
+            c["Parameter"]["firstname"],
+            c["Parameter"]["nickname"],
         )
         c.save("./data/{}.png".format(name))
 

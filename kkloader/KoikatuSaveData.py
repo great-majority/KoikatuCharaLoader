@@ -4,8 +4,7 @@ import io
 import struct
 
 from kkloader import KoikatuCharaData
-from kkloader.funcs import load_string, load_type, write_string
-
+from kkloader.funcs import load_string, load_type, load_length, write_string
 
 class KoikatuSaveData:
     variables_1 = [
@@ -202,6 +201,29 @@ class KoikatuSaveData:
             for n in i[2]:
                 data_stream.write(struct.pack("i", n[0]))
                 data_stream.write(struct.pack("i", n[1]))
+
+
+    def _load_extended_data(self, data_stream):
+        self.extra_sections = {}
+        while True:
+            try:
+                extra_name = load_string(data_stream)
+            except struct.error:
+                break
+            
+            data_version = load_type(data_stream, "i")
+            extra_data = load_length(data_stream, "i")  # This is msgpack, but cause probles when repacking
+            self.extra_sections[extra_name] = [data_version, extra_data]
+
+
+    def _serialize_extended_data(self, data_stream):
+        for extra_name, extradata in self.extra_sections.items():
+            data_stream.write(struct.pack("B", len(extra_name)))
+            data_stream.write(extra_name)
+
+            data_stream.write(struct.pack("i", extradata[0]))
+            data_stream.write(struct.pack("i", len(extradata[1])))
+            data_stream.write(extradata[1])
 
 
     def save(self, filename):

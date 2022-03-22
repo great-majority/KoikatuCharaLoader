@@ -37,7 +37,6 @@ class KoikatuSaveData:
     def load(filelike):
         ks = KoikatuSaveData()
 
-
         if isinstance(filelike, str):
             with open(filelike, "br") as f:
                 data = f.read()
@@ -63,7 +62,6 @@ class KoikatuSaveData:
 
         return ks
 
-
     def __bytes__(self):
         data_stream = io.BytesIO()
 
@@ -79,14 +77,12 @@ class KoikatuSaveData:
         data_stream.seek(0)
         return data_stream.read()
 
-
     def _load_header(self, data_stream):
         self.version = load_string(data_stream)
         self.school_name = load_string(data_stream)
         self.emblem = load_type(data_stream, "i")
         self.opening = load_type(data_stream, "b")
         self.week = load_type(data_stream, "i")
-
 
     def _serialize_header(self, data_stream):
         write_string(data_stream, self.version)
@@ -95,23 +91,19 @@ class KoikatuSaveData:
         data_stream.write(struct.pack("b", self.opening))
         data_stream.write(struct.pack("i", self.week))
 
-
     def _load_player(self, data_stream):
         self.player = CharaInfo(data_stream)
 
-
     def _serialize_player(self, data_stream):
         self.player.serialize(data_stream)
-    
+
     def _load_vars1(self, data_stream):
         for name, fmt in self.variables_1:
             setattr(self, name, load_type(data_stream, fmt))
 
-
     def _serialize_vars1(self, data_stream):
         for name, fmt in self.variables_1:
             data_stream.write(struct.pack(fmt, getattr(self, name)))
-
 
     def _load_heroines(self, data_stream):
         self.heroines = []
@@ -119,24 +111,20 @@ class KoikatuSaveData:
             heroine = HeroineInfo(data_stream)
             self.heroines.append(heroine)
 
-
     def _serialize_heroines(self, data_stream):
         data_stream.write(struct.pack("i", len(self.heroines)))
         for i in self.heroines:
             i.serialize(data_stream)
-
 
     def _load_personality(self, data_stream):
         self.met_personality = []
         for i in range(load_type(data_stream, "i")):
             self.met_personality.append(load_type(data_stream, "i"))
 
-
     def _serialize_personality(self, data_stream):
         data_stream.write(struct.pack("i", len(self.met_personality)))
         for i in self.met_personality:
             data_stream.write(struct.pack("i", i))
-
 
     def _load_club_data(self, data_stream):
         self.clubpoint = load_type(data_stream, "i")
@@ -153,7 +141,6 @@ class KoikatuSaveData:
         for i in range(load_type(data_stream, "i")):
             self.clubcontent_items.append(load_type(data_stream, "i"))
 
-
     def _serialize_club_data(self, data_stream):
         data_stream.write(struct.pack("i", self.clubpoint))
 
@@ -168,16 +155,13 @@ class KoikatuSaveData:
         for i in self.clubcontent_items:
             data_stream.write(struct.pack("i", i))
 
-
     def _load_vars2(self, data_stream):
         for name, fmt in self.variables_2:
             setattr(self, name, load_type(data_stream, fmt))
 
-
     def _serialize_vars2(self, data_stream):
         for name, fmt in self.variables_2:
             data_stream.write(struct.pack(fmt, getattr(self, name)))
-    
 
     def _load_action_controls(self, data_stream):
         self.action_controls = []
@@ -186,12 +170,12 @@ class KoikatuSaveData:
             school_class_idx = load_type(data_stream, "i")
             action_control = []
             for n in range(load_type(data_stream, "i")):
-                action_control.append([
-                    load_type(data_stream, "i"), 
-                    load_type(data_stream, "i") 
-                ])
-            self.action_controls.append([school_class, school_class_idx, action_control])
-
+                action_control.append(
+                    [load_type(data_stream, "i"), load_type(data_stream, "i")]
+                )
+            self.action_controls.append(
+                [school_class, school_class_idx, action_control]
+            )
 
     def _serialize_action_controls(self, data_stream):
         data_stream.write(struct.pack("i", len(self.action_controls)))
@@ -203,11 +187,11 @@ class KoikatuSaveData:
                 data_stream.write(struct.pack("i", n[0]))
                 data_stream.write(struct.pack("i", n[1]))
 
-
     def save(self, filename):
         data = bytes(self)
         with open(filename, "bw+") as f:
             f.write(data)
+
 
 class CharaInfo:
     def __init__(self, data_stream):

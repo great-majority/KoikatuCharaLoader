@@ -43,7 +43,7 @@ def write_string(data_stream, value):
 
 
 def msg_unpack(data):
-    return unpackb(data, raw=False)
+    return unpackb(data, raw=False, strict_map_key=False)
 
 
 def msg_pack(data):

@@ -303,10 +303,9 @@ class About(BlockData):
     def __init__(self, data, version):
         super().__init__(name="About", data=data, version=version)
 
-# Issues decoding msgpack data between python and C# make it advisable not to unpack
-# class KKEx(BlockData):
-#     def __init__(self, data, version):
-#         super().__init__(name="KKEx", data=data, version=version)    
+class KKEx(BlockData):
+    def __init__(self, data, version):
+        super().__init__(name="KKEx", data=data, version=version)
 
 class UnknownBlockData(BlockData):
     def __init__(self, name, data, version):
@@ -325,7 +324,3 @@ class UnknownBlockData(BlockData):
 
     def prettify(self):
         return self.data
-
-class KKEx(UnknownBlockData):
-    def __init__(self, data, version):
-        super().__init__(name="KKEx", data=data, version=version)

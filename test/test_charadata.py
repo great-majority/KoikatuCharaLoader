@@ -28,7 +28,7 @@ def test_load_emocre_character():
     assert hasattr(ec, "Status")
 
 
-def test_load_character():
+def test_load_mod_character():
     kc = KoikatuCharaData.load("./data/kk_mod_chara.png")
     assert hasattr(kc, "Custom")
     assert hasattr(kc, "Coordinate")

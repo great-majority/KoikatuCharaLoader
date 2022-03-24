@@ -51,76 +51,97 @@ class KoikatuSaveData:
         else:
             ValueError("unsupported input. type:{}".format(type(filelike)))
 
-        ks.version = load_string(data_stream)
-        ks.school_name = load_string(data_stream)
-        ks.emblem = load_type(data_stream, "i")
-        ks.opening = load_type(data_stream, "b")
-        ks.week = load_type(data_stream, "i")
+        ks._load_header(data_stream)
+        ks._load_player(data_stream)
+        ks._load_vars1(data_stream)
+        ks._load_heroines(data_stream)
+        ks._load_personality(data_stream)
+        ks._load_club_data(data_stream)
+        ks._load_vars2(data_stream)
+        ks._load_action_controls(data_stream)
 
-        ks.player = CharaInfo(data_stream)
-
-        for name, fmt in ks.variables_1:
-            setattr(ks, name, load_type(data_stream, fmt))
-
-        ks.heroines = []
-        for i in range(load_type(data_stream, "i")):
-            heroine = HeroineInfo(data_stream)
-            ks.heroines.append(heroine)
-
-        ks.met_personality = []
-        for i in range(load_type(data_stream, "i")):
-            ks.met_personality.append(load_type(data_stream, "i"))
-
-        ks.clubpoint = load_type(data_stream, "i")
-
-        ks.clubcontents = {}
-        for i in range(load_type(data_stream, "i")):
-            key = load_type(data_stream, "i")
-            clubcontent = []
-            for n in range(load_type(data_stream, "i")):
-                clubcontent.append(load_type(data_stream, "i"))
-            ks.clubcontents[key] = clubcontent
-
-        ks.clubcontent_items = []
-        for i in range(load_type(data_stream, "i")):
-            ks.clubcontent_items.append(load_type(data_stream, "i"))
-
-        for name, fmt in ks.variables_2:
-            setattr(ks, name, load_type(data_stream, fmt))
-
-        ks.action_controls = []
-        for i in range(load_type(data_stream, "i")):
-            school_class = load_type(data_stream, "i")
-            school_class_idx = load_type(data_stream, "i")
-            action_control = {}
-            for n in range(load_type(data_stream, "i")):
-                action_control[load_type(data_stream, "i")] = load_type(
-                    data_stream, "i"
-                )
-            ks.action_controls.append([school_class, school_class_idx, action_control])
         return ks
 
     def __bytes__(self):
         data_stream = io.BytesIO()
+
+        self._serialize_header(data_stream)
+        self._serialize_player(data_stream)
+        self._serialize_vars1(data_stream)
+        self._serialize_heroines(data_stream)
+        self._serialize_personality(data_stream)
+        self._serialize_club_data(data_stream)
+        self._serialize_vars2(data_stream)
+        self._serialize_action_controls(data_stream)
+
+        data_stream.seek(0)
+        return data_stream.read()
+
+    def _load_header(self, data_stream):
+        self.version = load_string(data_stream)
+        self.school_name = load_string(data_stream)
+        self.emblem = load_type(data_stream, "i")
+        self.opening = load_type(data_stream, "b")
+        self.week = load_type(data_stream, "i")
+
+    def _serialize_header(self, data_stream):
         write_string(data_stream, self.version)
         write_string(data_stream, self.school_name)
         data_stream.write(struct.pack("i", self.emblem))
         data_stream.write(struct.pack("b", self.opening))
         data_stream.write(struct.pack("i", self.week))
 
+    def _load_player(self, data_stream):
+        self.player = CharaInfo(data_stream)
+
+    def _serialize_player(self, data_stream):
         self.player.serialize(data_stream)
 
+    def _load_vars1(self, data_stream):
+        for name, fmt in self.variables_1:
+            setattr(self, name, load_type(data_stream, fmt))
+
+    def _serialize_vars1(self, data_stream):
         for name, fmt in self.variables_1:
             data_stream.write(struct.pack(fmt, getattr(self, name)))
 
+    def _load_heroines(self, data_stream):
+        self.heroines = []
+        for i in range(load_type(data_stream, "i")):
+            heroine = HeroineInfo(data_stream)
+            self.heroines.append(heroine)
+
+    def _serialize_heroines(self, data_stream):
         data_stream.write(struct.pack("i", len(self.heroines)))
         for i in self.heroines:
             i.serialize(data_stream)
 
+    def _load_personality(self, data_stream):
+        self.met_personality = []
+        for i in range(load_type(data_stream, "i")):
+            self.met_personality.append(load_type(data_stream, "i"))
+
+    def _serialize_personality(self, data_stream):
         data_stream.write(struct.pack("i", len(self.met_personality)))
         for i in self.met_personality:
             data_stream.write(struct.pack("i", i))
 
+    def _load_club_data(self, data_stream):
+        self.clubpoint = load_type(data_stream, "i")
+
+        self.clubcontents = {}
+        for i in range(load_type(data_stream, "i")):
+            key = load_type(data_stream, "i")
+            clubcontent = []
+            for n in range(load_type(data_stream, "i")):
+                clubcontent.append(load_type(data_stream, "i"))
+            self.clubcontents[key] = clubcontent
+
+        self.clubcontent_items = []
+        for i in range(load_type(data_stream, "i")):
+            self.clubcontent_items.append(load_type(data_stream, "i"))
+
+    def _serialize_club_data(self, data_stream):
         data_stream.write(struct.pack("i", self.clubpoint))
 
         data_stream.write(struct.pack("i", len(self.clubcontents)))
@@ -134,20 +155,37 @@ class KoikatuSaveData:
         for i in self.clubcontent_items:
             data_stream.write(struct.pack("i", i))
 
+    def _load_vars2(self, data_stream):
+        for name, fmt in self.variables_2:
+            setattr(self, name, load_type(data_stream, fmt))
+
+    def _serialize_vars2(self, data_stream):
         for name, fmt in self.variables_2:
             data_stream.write(struct.pack(fmt, getattr(self, name)))
 
+    def _load_action_controls(self, data_stream):
+        self.action_controls = []
+        for i in range(load_type(data_stream, "i")):
+            school_class = load_type(data_stream, "i")
+            school_class_idx = load_type(data_stream, "i")
+            action_control = []
+            for n in range(load_type(data_stream, "i")):
+                action_control.append(
+                    [load_type(data_stream, "i"), load_type(data_stream, "i")]
+                )
+            self.action_controls.append(
+                [school_class, school_class_idx, action_control]
+            )
+
+    def _serialize_action_controls(self, data_stream):
         data_stream.write(struct.pack("i", len(self.action_controls)))
         for i in self.action_controls:
             data_stream.write(struct.pack("i", i[0]))
             data_stream.write(struct.pack("i", i[1]))
             data_stream.write(struct.pack("i", len(i[2])))
             for n in i[2]:
-                data_stream.write(struct.pack("i", n))
-                data_stream.write(struct.pack("i", i[2][n]))
-
-        data_stream.seek(0)
-        return data_stream.read()
+                data_stream.write(struct.pack("i", n[0]))
+                data_stream.write(struct.pack("i", n[1]))
 
     def save(self, filename):
         data = bytes(self)

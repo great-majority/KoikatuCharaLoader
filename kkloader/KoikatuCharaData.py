@@ -303,9 +303,11 @@ class About(BlockData):
     def __init__(self, data, version):
         super().__init__(name="About", data=data, version=version)
 
+
 class KKEx(BlockData):
     def __init__(self, data, version):
         super().__init__(name="KKEx", data=data, version=version)
+
 
 class UnknownBlockData(BlockData):
     def __init__(self, name, data, version):

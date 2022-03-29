@@ -29,7 +29,7 @@ jobs:
         poetry run black --check --diff
     - name: Lint with isort
       run: |
-        poetry run isort --check-only
+        poetry run isort . --check-only
     - name: Test with pytest without MySQL
       run: |
         poetry run pytest

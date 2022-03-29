@@ -23,13 +23,13 @@ jobs:
       run: poetry install
     - name: Lint with flake8
       run: |
-        poetry run flake8 . --exclude .venv --count --show-source --statistics
+        poetry run flake8 --count --show-source --statistics
     - name: Lint with black
       run: |
-        poetry run black . --exclude .venv --check --diff
+        poetry run black --check --diff
     - name: Lint with isort
       run: |
-        poetry run isort . --skip .venv --check-only
+        poetry run isort --check-only
     - name: Test with pytest without MySQL
       run: |
         poetry run pytest

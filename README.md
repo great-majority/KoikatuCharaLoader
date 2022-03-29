@@ -149,5 +149,14 @@ kc["Custom"]["body"]["underhairId"] = 0
 kc.save("./data/kk_chara_modified.png")
 ```
 
+# Contributing
+*You need Python 3.9 and `poetry` command (you can install with `pip install poetry`).*
+
+1. Fork this repository and then pull.
+2. Do `make install` to install dependencies.
+3. Create a new branch and make change the code.
+4. Do `make format` and `make check`
+5. When you passed `make check`, then push the code and make pull request on this repository.
+
 # Acknowledgements
 - [martinwu42/pykoikatu](https://github.com/martinwu42/pykoikatu)

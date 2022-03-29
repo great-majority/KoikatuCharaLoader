@@ -6,7 +6,7 @@
 ```
 $ pip install kkloader
 ```
-これでうまく入らないようだったら以下のコマンドを試してみてください。
+これでうまく入らないようでしたら以下のコマンドを試してみてください。
 ```
 $ python -m pip install kkloader
 ```
@@ -150,6 +150,15 @@ kc = KoikatuCharaData.load("./data/kk_chara.png")
 kc["Custom"]["body"]["underhairId"] = 0
 kc.save("./data/kk_chara_modified.png")
 ```
+
+# 開発に参加する
+*Python 3.9と`poetry`コマンドが必要です(`pip install poetry`でインストールできます)。*
+
+1. このリポジトリをフォークし、ローカルにpullします。
+2. `make install`して依存関係をインストールします。
+3. 新しくブランチを切り、コードに変更を加えます。
+4. `make format`と`make check`を行い、変更を加えたコードをフォーマット&チェックします。
+5. `make check`がエラーなく終わったなら、コードをpushしこのリポジトリにプルリクエストを出してください。
 
 # 謝辞
 - [martinwu42/pykoikatu](https://github.com/martinwu42/pykoikatu)

@@ -2,7 +2,7 @@
 このプログラムは、コイカツやエモクリのキャラカードをPythonで読み込む・書き込むためのライブラリです。(キャラカードの他にもセーブデータ等も完全ではないですが読み込めます)
 
 [![](https://img.shields.io/pypi/v/kkloader)](https://pypi.org/project/kkloader/)
-![](https://img.shields.io/pypi/dm/kkloader)
+[![Downloads](https://pepy.tech/badge/kkloader)](https://pepy.tech/project/kkloader)
 
 # インストール
 [PyPI](https://pypi.org/project/kkloader/)からインストールできます。

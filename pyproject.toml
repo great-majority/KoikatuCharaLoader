@@ -2,7 +2,7 @@
 name = "kkloader"
 version = "0.0.0"
 description = "a simple deserializer / serializer for Koikatu / EmotionCreators data."
-authors = ["great-majority <yosaku.ideal+github@gmail.com>"]
+authors = ["great-majority <wired.wireless0@gmail.com>"]
 homepage = "https://github.com/great-majority/KoikatuCharaLoader"
 readme = "README.md"
 

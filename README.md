@@ -1,5 +1,5 @@
 # KoikatuCharaLoader
-A simple deserializer / serializer for Koikatu / EmotionCreators character data.
+A simple deserializer / serializer for Koikatu / EmotionCreators / Honeycome character data.
 
 [![](https://img.shields.io/pypi/v/kkloader)](https://pypi.org/project/kkloader/)
 [![Downloads](https://pepy.tech/badge/kkloader)](https://pepy.tech/project/kkloader)
@@ -27,6 +27,19 @@ $ python
 >>> kc.save("./kk_chara_modified.png") # Save to `kk_chara_modified.png`.
 ```
 that's it :)
+
+# List of Classes
+
+- Supports saving and loading
+  - KoikatuCharaData
+  - EmocreCharaData
+  - HoneycomeCharaData
+- Supports loading only
+  - KoikatuSaveData
+  - EmocreMapData
+  - EmocreSceneData
+
+Any class can be imported like `from kkloader import KoikatuCharaData` and data can be loaded using the `.load(filename)` method.
 
 # Mechanism of the Blockdata
 
@@ -163,3 +176,7 @@ kc.save("./data/kk_chara_modified.png")
 
 # Acknowledgements
 - [martinwu42/pykoikatu](https://github.com/martinwu42/pykoikatu)
+
+# Contact
+
+[@tropical_362827](https://twitter.com/tropical_362827)

@@ -16,10 +16,15 @@ def bin_to_str(serial):
 
 
 class KoikatuCharaData:
-    readable_formats = ["Custom", "Coordinate", "Parameter", "Status", "About", "KKEx"]
-
     def __init__(self):
-        pass
+        self.modules = {
+            "Custom": Custom,
+            "Coordinate": Coordinate,
+            "Parameter": Parameter,
+            "Status": Status,
+            "About": About,
+            "KKEx": KKEx,
+        }
 
     @classmethod
     def load(cls, filelike, contains_png=True):
@@ -68,8 +73,8 @@ class KoikatuCharaData:
             data = lstinfo_raw[pos : pos + size]
 
             self.blockdata.append(name)
-            if name in self.readable_formats:
-                setattr(self, name, globals()[name](data, version))
+            if name in self.modules.keys():
+                setattr(self, name, self.modules[name](data, version))
             else:
                 setattr(self, name, UnknownBlockData(name, data, version))
                 self.unknown_blockdata.append(name)

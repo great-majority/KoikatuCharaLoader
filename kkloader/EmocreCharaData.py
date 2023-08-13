@@ -1,12 +1,20 @@
 import struct
 
+import kkloader
 import kkloader.KoikatuCharaData
 from kkloader.funcs import get_png, load_length, load_type
 
 
 class EmocreCharaData(kkloader.KoikatuCharaData):
     def __init__(self):
-        pass
+        self.modules = {
+            "Custom": kkloader.kk_Custom,
+            "Coordinate": kkloader.kk_Coordinate,
+            "Parameter": kkloader.kk_Parameter,
+            "Status": kkloader.kk_Status,
+            "About": kkloader.kk_About,
+            "KKEx": kkloader.kk_KKEx,
+        }
 
     def _load_header(self, data, **kwargs):
         self.image = get_png(data)

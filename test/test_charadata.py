@@ -1,6 +1,6 @@
 import tempfile
 
-from kkloader import EmocreCharaData, KoikatuCharaData, HoneycomeCharaData
+from kkloader import EmocreCharaData, HoneycomeCharaData, KoikatuCharaData
 
 
 def test_load_character():

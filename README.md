@@ -2,7 +2,7 @@
 A simple deserializer / serializer for Koikatu / EmotionCreators / Honeycome character data.
 
 [![](https://img.shields.io/pypi/v/kkloader)](https://pypi.org/project/kkloader/)
-[![Downloads](https://pepy.tech/badge/kkloader)](https://pepy.tech/project/kkloader)
+[![Downloads](https://static.pepy.tech/badge/kkloader)](https://pepy.tech/project/kkloader)
 
 [日本語マニュアルがここにあります](README.ja.md)
 

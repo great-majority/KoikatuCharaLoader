@@ -37,10 +37,16 @@ def test_load_mod_character():
     assert hasattr(kc, "KKEx")
 
 
+def test_load_honeycome_party_character():
+    hc = HoneycomeCharaData.load("./data/hcp_chara.png")
+    for b in hc.blockdata:
+        assert b in hc.modules.keys()
+
+
 def test_load_honeycome_character():
     hc = HoneycomeCharaData.load("./data/hc_chara.png")
-    for f in hc.modules.keys():
-        assert hasattr(hc, f)
+    for b in hc.blockdata:
+        assert b in hc.modules.keys()
 
 
 def test_save_character():
@@ -70,6 +76,16 @@ def test_save_emocre_character():
     assert bytes(ec) == bytes(ec2)
 
 
+def test_save_honeycome_party_character():
+    tmpfile = tempfile.NamedTemporaryFile()
+    hc = HoneycomeCharaData.load("./data/hcp_chara.png")
+    hc.save(tmpfile.name)
+    hc2 = HoneycomeCharaData.load(tmpfile.name)
+    assert hc["Parameter"]["lastname"] == hc2["Parameter"]["lastname"]
+    assert hc["Parameter"]["firstname"] == hc2["Parameter"]["firstname"]
+    assert bytes(hc) == bytes(hc2)
+
+
 def test_save_honeycome_character():
     tmpfile = tempfile.NamedTemporaryFile()
     hc = HoneycomeCharaData.load("./data/hc_chara.png")
@@ -96,6 +112,13 @@ def test_json_emocre_character():
     ec = EmocreCharaData.load("./data/ec_chara.png")
     tmpfile = tempfile.NamedTemporaryFile()
     ec.save_json(tmpfile.name)
+
+
+def test_json_honeycome_party():
+    hc = HoneycomeCharaData.load("./data/hcp_chara.png")
+    tmpfile = tempfile.NamedTemporaryFile()
+    hc.save_json("test.json")
+    hc.save_json(tmpfile.name)
 
 
 def test_json_honeycome():

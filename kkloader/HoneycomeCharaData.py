@@ -17,6 +17,8 @@ class HoneycomeCharaData(kkloader.KoikatuCharaData):
             "About": kkloader.kk_About,
             "GameParameter_HCP": GameParameter_HCP,
             "GameInfo_HCP": GameInfo_HCP,
+            "GameParameter_HC": GameParameter_HC,
+            "GameInfo_HC": GameInfo_HC,
         }
 
 
@@ -94,3 +96,13 @@ class GameParameter_HCP(BlockData):
 class GameInfo_HCP(BlockData):
     def __init__(self, data, version):
         super().__init__(name="GameInfo_HCP", data=data, version=version)
+
+
+class GameParameter_HC(BlockData):
+    def __init__(self, data, version):
+        super().__init__(name="GameParameter_HC", data=data, version=version)
+
+
+class GameInfo_HC(BlockData):
+    def __init__(self, data, version):
+        super().__init__(name="GameInfo_HC", data=data, version=version)

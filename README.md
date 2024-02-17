@@ -165,6 +165,12 @@ kc["Custom"]["body"]["underhairId"] = 0
 kc.save("./data/kk_chara_modified.png")
 ```
 
+### Converting Character Cards from EmotionCreators to Koikatu
+
+[`ec_to_kk.py`](https://github.com/great-majority/KoikatuCharaLoader/blob/master/samples/ec_to_kk.py) in the sample directory could be helpful.
+
+Using **[this web app](https://kk-snippets.streamlit.app/ec-to-kk)**, you can easily use a program with the same functionality directly from your browser.
+
 # Contributing
 *You need Python 3.9 and `poetry` command (you can install with `pip install poetry`).*
 

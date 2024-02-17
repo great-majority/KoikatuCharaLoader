@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
+# If all you want to do is *use* this script, just visit
+# https://kk-snippets.streamlit.app/ec-to-kk
+# and you can easily convert character cards in your browser.
+
 import copy
 import os
 import sys

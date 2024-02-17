@@ -167,6 +167,12 @@ kc["Custom"]["body"]["underhairId"] = 0
 kc.save("./data/kk_chara_modified.png")
 ```
 
+### エモクリのキャラデータをコイカツのキャラデータに変換する
+
+sampleフォルダにある [`ec_to_kk.py`](https://github.com/great-majority/KoikatuCharaLoader/blob/master/samples/ec_to_kk.py) が参考になると思います。
+
+ただこのプログラムが使いたいだけなのであれば、**[このサイト](https://kk-snippets.streamlit.app/ec-to-kk)** から同じ処理をブラウザ上で実行することができます。
+
 # 開発に参加する
 *Python 3.9と`poetry`コマンドが必要です(`pip install poetry`でインストールできます)。*
 

@@ -12,7 +12,7 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
       with:
-        python-version: 3.7
+        python-version: 3.11
     - name: Install pip
       run: |
         python -m pip install --upgrade pip
@@ -21,15 +21,9 @@ jobs:
         python -m pip install poetry
     - name: Install dependencies
       run: poetry install
-    - name: Lint with flake8
+    - name: Lint with ruff
       run: |
-        poetry run flake8 ./kkloader ./test --count --show-source --statistics
-    - name: Lint with black
-      run: |
-        poetry run black ./kkloader ./test --check --diff
-    - name: Lint with isort
-      run: |
-        poetry run isort ./kkloader ./test --check-only
+        poetry run ruff check --output-format=github ./kkloader ./test
     - name: Test with pytest
       run: |
         poetry run pytest

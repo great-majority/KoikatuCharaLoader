@@ -4,9 +4,7 @@ from msgpack import packb, unpackb
 
 
 def load_length(data_stream, struct_type):
-    length = struct.unpack(struct_type, data_stream.read(struct.calcsize(struct_type)))[
-        0
-    ]
+    length = struct.unpack(struct_type, data_stream.read(struct.calcsize(struct_type)))[0]
     return data_stream.read(length)
 
 

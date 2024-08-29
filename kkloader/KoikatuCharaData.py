@@ -109,9 +109,7 @@ class KoikatuCharaData:
         lstinfos = []
         for v in self.blockdata:
             data, name, version = getattr(self, v).serialize()
-            lstinfos.append(
-                {"name": name, "version": version, "pos": cumsum, "size": len(data)}
-            )
+            lstinfos.append({"name": name, "version": version, "pos": cumsum, "size": len(data)})
             chara_values.append(data)
             cumsum += len(data)
         chara_values = b"".join(chara_values)
@@ -156,9 +154,7 @@ class KoikatuCharaData:
         if "include_image" in kwargs and kwargs["include_image"]:
             if self.image:
                 data.update({"image": base64.b64encode(self.image).decode("ascii")})
-            data.update(
-                {"face_image": base64.b64encode(self.face_image).decode("ascii")}
-            )
+            data.update({"face_image": base64.b64encode(self.face_image).decode("ascii")})
         return data
 
     def __str__(self):

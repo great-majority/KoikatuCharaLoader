@@ -69,6 +69,4 @@ class EmocreCharaData(kkloader.KoikatuCharaData):
         header = self.header.decode("utf-8")
         userid = self.userid.decode("ascii")
         dataid = self.dataid.decode("ascii")
-        return "{}, {}, userid:{}, dataid:{}".format(
-            header, self["Parameter"]["fullname"], userid, dataid
-        )
+        return "{}, {}, userid:{}, dataid:{}".format(header, self["Parameter"]["fullname"], userid, dataid)

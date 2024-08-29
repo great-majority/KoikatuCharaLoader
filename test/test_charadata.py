@@ -1,6 +1,11 @@
 import tempfile
 
-from kkloader import EmocreCharaData, HoneycomeCharaData, KoikatuCharaData
+from kkloader import (
+    EmocreCharaData,
+    HoneycomeCharaData,
+    KoikatuCharaData,
+    SummerVacationCharaData,
+)
 
 
 def test_load_character():
@@ -47,6 +52,12 @@ def test_load_honeycome_character():
     hc = HoneycomeCharaData.load("./data/hc_chara.png")
     for b in hc.blockdata:
         assert b in hc.modules.keys()
+
+
+def test_load_summervacation_character():
+    svc = SummerVacationCharaData.load("./data/sv_chara.png")
+    for b in svc.blockdata:
+        assert b in svc.modules.keys()
 
 
 def test_save_character():
@@ -96,6 +107,16 @@ def test_save_honeycome_character():
     assert bytes(hc) == bytes(hc2)
 
 
+def test_save_summervacation_character():
+    tmpfile = tempfile.NamedTemporaryFile()
+    svc = SummerVacationCharaData.load("./data/sv_chara.png")
+    svc.save(tmpfile.name)
+    svc2 = SummerVacationCharaData.load(tmpfile.name)
+    assert svc["Parameter"]["lastname"] == svc2["Parameter"]["lastname"]
+    assert svc["Parameter"]["firstname"] == svc2["Parameter"]["firstname"]
+    assert bytes(svc) == bytes(svc2)
+
+
 def test_json_character():
     kc = KoikatuCharaData.load("./data/kk_chara.png")
     tmpfile = tempfile.NamedTemporaryFile()
@@ -117,12 +138,16 @@ def test_json_emocre_character():
 def test_json_honeycome_party():
     hc = HoneycomeCharaData.load("./data/hcp_chara.png")
     tmpfile = tempfile.NamedTemporaryFile()
-    hc.save_json("test.json")
     hc.save_json(tmpfile.name)
 
 
 def test_json_honeycome():
     hc = HoneycomeCharaData.load("./data/hc_chara.png")
     tmpfile = tempfile.NamedTemporaryFile()
-    hc.save_json("test.json")
+    hc.save_json(tmpfile.name)
+
+
+def test_json_summervacation():
+    hc = SummerVacationCharaData.load("./data/sv_chara.png")
+    tmpfile = tempfile.NamedTemporaryFile()
     hc.save_json(tmpfile.name)

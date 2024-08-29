@@ -170,12 +170,8 @@ class KoikatuSaveData:
             school_class_idx = load_type(data_stream, "i")
             action_control = []
             for n in range(load_type(data_stream, "i")):
-                action_control.append(
-                    [load_type(data_stream, "i"), load_type(data_stream, "i")]
-                )
-            self.action_controls.append(
-                [school_class, school_class_idx, action_control]
-            )
+                action_control.append([load_type(data_stream, "i"), load_type(data_stream, "i")])
+            self.action_controls.append([school_class, school_class_idx, action_control])
 
     def _serialize_action_controls(self, data_stream):
         data_stream.write(struct.pack("i", len(self.action_controls)))

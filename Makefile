@@ -7,11 +7,8 @@ install:
 	poetry install
 
 format:
-	poetry run isort ./kkloader ./test
-	poetry run black ./kkloader ./test
+	poetry run ruff format ./kkloader ./test
 
 check:
-	poetry run flake8 ./kkloader ./test --count --show-source --statistics
-	poetry run black ./kkloader ./test --check --diff
-	poetry run isort ./kkloader ./test --check-only
+	poetry run ruff check ./kkloader ./test
 	poetry run pytest

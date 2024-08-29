@@ -1,5 +1,5 @@
 # KoikatuCharaLoader
-このプログラムは、コイカツ・エモクリ・ハニカムのキャラカードをPythonで読み込む・書き込むためのライブラリです。(キャラカードの他にもセーブデータ等も完全ではないですが読み込めます)
+このプログラムは、コイカツ・エモクリ・ハニカム・サマすくのキャラカードをPythonで読み込む・書き込むためのライブラリです。(キャラカードの他にもセーブデータ等も完全ではないですが読み込めます)
 
 [![](https://img.shields.io/pypi/v/kkloader)](https://pypi.org/project/kkloader/)
 [![Downloads](https://static.pepy.tech/badge/kkloader)](https://pepy.tech/project/kkloader)
@@ -32,6 +32,7 @@ $ python
   - KoikatuCharaData
   - EmocreCharaData
   - HoneycomeCharaData
+  - SummerVacationCharaData
 - 読み込みのみ対応
   - KoikatuSaveData
   - EmocreMapData

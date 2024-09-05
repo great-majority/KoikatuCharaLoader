@@ -171,6 +171,10 @@ kc.save("./data/kk_chara_modified.png")
 
 Using **[this web app](https://kk-snippets.streamlit.app/ec-to-kk)**, you can easily perform the conversion directly from your browser.
 
+### Others
+
+Various examples using this module can be found in [this repository](https://github.com/great-majority/kk-snippets), and you can also use it on [this site](https://kk-snippets.streamlit.app/).
+
 # Contributing
 *You'll need Python 3.11 and `poetry` command (you can install with `pip install poetry`).*
 

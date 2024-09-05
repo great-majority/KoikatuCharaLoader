@@ -1,5 +1,5 @@
 # KoikatuCharaLoader
-A simple deserializer / serializer for Koikatu / EmotionCreators / Honeycome / SummerVacationScramble character data.
+A simple deserializer and serializer for character data from Koikatu, EmotionCreators, Honeycome, and SummerVacationScramble.
 
 [![](https://img.shields.io/pypi/v/kkloader)](https://pypi.org/project/kkloader/)
 [![Downloads](https://static.pepy.tech/badge/kkloader)](https://pepy.tech/project/kkloader)
@@ -7,11 +7,11 @@ A simple deserializer / serializer for Koikatu / EmotionCreators / Honeycome / S
 [日本語マニュアルがここにあります](README.ja.md)
 
 # Installation
-You can install this module from [PyPI](https://pypi.org/project/kkloader/).
+You can install the module from [PyPI](https://pypi.org/project/kkloader/).
 ```
 $ pip install kkloader
 ```
-If this does not work, try the following command (for Windows users, maybe).
+If this doesn't work, try the following command (this may be for Windows users).
 ```
 $ python -m pip install kkloader
 ```
@@ -19,65 +19,64 @@ $ python -m pip install kkloader
 # Basic Usage
 ```python
 $ python
->>> from kkloader import KoikatuCharaData # Load a module.
->>> kc = KoikatuCharaData.load("./data/kk_chara.png") # Load a character data.
->>> kc["Parameter"]["nickname"] # Print character's nickname.
+>>> from kkloader import KoikatuCharaData # Load the module.
+>>> kc = KoikatuCharaData.load("./data/kk_chara.png") # Load character data.
+>>> kc["Parameter"]["nickname"] # Print the character's nickname.
 'かずのん'
->>> kc["Parameter"]["nickname"] = "chikarin" # Renaming nickname.
+>>> kc["Parameter"]["nickname"] = "chikarin" # Rename the nickname.
 >>> kc.save("./kk_chara_modified.png") # Save to `kk_chara_modified.png`.
 ```
-that's it :)
+That's it! :)
 
 # List of Classes
 
-- Supports saving and loading
-  - KoikatuCharaData
-  - EmocreCharaData
-  - HoneycomeCharaData
-  - SummerVacationCharaData
-- Supports loading only
-  - KoikatuSaveData
-  - EmocreMapData
-  - EmocreSceneData
+- Supports saving and loading:
+  - `KoikatuCharaData`
+  - `EmocreCharaData`
+  - `HoneycomeCharaData`
+  - `SummerVacationCharaData`
+  - `SummerVacationSaveData`
+- Supports loading only:
+  - `KoikatuSaveData`
+  - `EmocreMapData`
+  - `EmocreSceneData`
 
-Any class can be imported like `from kkloader import KoikatuCharaData` and data can be loaded using the `.load(filename)` method.
+Any class can be imported with `from kkloader import KoikatuCharaData` and data can be loaded using the `.load(filename)` method.
 
 # Mechanism of the Blockdata
 
-A character data of koikatu consists of some *blockdata*.
-The *blockdata* is a collection of character parameters.
-A typical Koikatsu character data contains the following blockdata:
+Koikatu character data consists of several *block data* sections. Each *block data* contains various character parameters. A typical Koikatsu character data includes the following block data:
 
 | name of blockdata | description                                                  |
 | ----------------- | ------------------------------------------------------------ |
 | Custom            | Values for the character's face, body, and hairstyle.        |
 | Coordinate        | Values for clothes and accessories worn by characters.       |
-| Parameter         | Values for character names, birthdays, preferences, etc.     |
-| Status            | Values for clothed states, etc. (I'm not sure how they are used in the game) |
+| Parameter         | Values for character's name, birthday, preferences, etc.     |
+| Status            | Values for clothed states, etc. (Usage in the game is unclear) |
 | About             | userID & dataID (added from Koikatu Sunshine)                |
 | KKEx              | Values used in MOD                                           |
 
-You can check which block data exists from `blockdata` in KoikatuCharaData.
+You can check which block data is present in `blockdata` from the `KoikatuCharaData` object:
 ```
 >>> kc.blockdata
 ['Custom', 'Coordinate', 'Parameter', 'Status']
 ```
-If there is block data in an unknown format, it can be checked with `unknown_blockdata`.
+If there is block data in an unknown format, it can be found using `unknown_blockdata`.
 
 ### Access to Blockdata
-The blockdata can be accessed as a member variable of the `KoikatuCharaData` class, or accessed as a dictionary.
+The block data can be accessed either as a member variable of the `KoikatuCharaData` class or as a dictionary.
 ```python
 >>> kc.Custom
 <kkloader.KoikatuCharaData.Custom object at 0x7f406bf18460>
 >>> kc["Custom"]
 <kkloader.KoikatuCharaData.Custom object at 0x7f406bf18460>
 ```
-So, these lines both access the same `kc.Custom`.
+As shown, both lines access the same `kc.Custom`.
 
 ### Find Variables
 
-By using the `prettify` method, the contents of the variables contained in the block of data will be displayed in an easy-to-read format.
-This is useful to find which variables exists.
+By using the `prettify` method, the contents of the variables within the data block will be displayed in a more readable format.
+This is useful for identifying which variables exist.
 ```
 >>> kc["Custom"].prettify()
 {
@@ -122,7 +121,7 @@ k.save_json("data.json")
         0.0,
 ...
 ```
-If you add `include_image=True` to the argument of `save_json`, base64-encoded images will be included in json.
+If you add `include_image=True` to the `save_json` function's arguments, base64-encoded images will be included in the JSON output.
 
 # Recipes
 
@@ -166,20 +165,20 @@ kc["Custom"]["body"]["underhairId"] = 0
 kc.save("./data/kk_chara_modified.png")
 ```
 
-### Converting Character Cards from EmotionCreators to Koikatu
+### Convert Character Cards from EmotionCreators to Koikatu
 
-[`ec_to_kk.py`](https://github.com/great-majority/KoikatuCharaLoader/blob/master/samples/ec_to_kk.py) in the sample directory could be helpful.
+[`ec_to_kk.py`](https://github.com/great-majority/KoikatuCharaLoader/blob/master/samples/ec_to_kk.py) in the sample directory might be helpful.
 
-Using **[this web app](https://kk-snippets.streamlit.app/ec-to-kk)**, you can easily use a program with the same functionality directly from your browser.
+Using **[this web app](https://kk-snippets.streamlit.app/ec-to-kk)**, you can easily perform the conversion directly from your browser.
 
 # Contributing
-*You need Python 3.9 and `poetry` command (you can install with `pip install poetry`).*
+*You'll need Python 3.11 and `poetry` command (you can install with `pip install poetry`).*
 
-1. Fork this repository and then pull.
-2. Do `make install` to install dependencies.
-3. Create a new branch and make change the code.
-4. Do `make format` and `make check`
-5. When you passed `make check`, then push the code and make pull request on this repository.
+1. Fork the repository and pull the latest changes.
+2. Run `make install` to install the dependencies.
+3. Create a new branch and make changes the code.
+4. Run `make format` and `make check`
+5. Once `make check` passes, push the code and open a pull request on the repository.
 
 # Acknowledgements
 - [martinwu42/pykoikatu](https://github.com/martinwu42/pykoikatu)

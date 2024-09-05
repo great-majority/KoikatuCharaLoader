@@ -9,6 +9,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.11"
 msgpack = "^1.0.3"
+pandas = "^2.2.2"
 
 
 [tool.poetry.group.dev.dependencies]

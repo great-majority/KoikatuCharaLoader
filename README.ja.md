@@ -29,14 +29,15 @@ $ python
 # 使用できるクラスの一覧
 
 - 読み込みと書き込み両方に対応
-  - KoikatuCharaData
-  - EmocreCharaData
-  - HoneycomeCharaData
-  - SummerVacationCharaData
+  - `KoikatuCharaData`
+  - `EmocreCharaData`
+  - `HoneycomeCharaData`
+  - `SummerVacationCharaData`
+  - `SummerVacationSaveData`
 - 読み込みのみ対応
-  - KoikatuSaveData
-  - EmocreMapData
-  - EmocreSceneData
+  - `KoikatuSaveData`
+  - `EmocreMapData`
+  - `EmocreSceneData`
 
 いずれのクラスも `from kkloader import KoikatuCharaData` のようにインポートし、 `.load(filename)` のようにファイルを読み込むことができます。
 
@@ -174,8 +175,12 @@ sampleフォルダにある [`ec_to_kk.py`](https://github.com/great-majority/Ko
 
 ただこのプログラムが使いたいだけなのであれば、**[このサイト](https://kk-snippets.streamlit.app/ec-to-kk)** から同じ処理をブラウザ上で実行することができます。
 
+### その他
+
+このモジュールを使った色々な例が [このリポジトリ](https://github.com/great-majority/kk-snippets) にあり、さらに [このサイト](https://kk-snippets.streamlit.app/) で使うこともできます。
+
 # 開発に参加する
-*Python 3.9と`poetry`コマンドが必要です(`pip install poetry`でインストールできます)。*
+*Python 3.11と`poetry`コマンドが必要です(`pip install poetry`でインストールできます)。*
 
 1. このリポジトリをフォークし、ローカルにpullします。
 2. `make install`して依存関係をインストールします。

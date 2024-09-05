@@ -13,3 +13,4 @@ from .EmocreMapData import EmocreMapData  # noqa
 from .EmocreSceneData import EmocreSceneData  # noqa
 from .HoneycomeCharaData import HoneycomeCharaData  # noqa
 from .SummerVacationCharaData import SummerVacationCharaData  # noqa
+from .SummerVacationSaveData import SummerVacationSaveData  # noqa

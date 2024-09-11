@@ -60,6 +60,10 @@ class SummerVacationSaveData:
         # The offset position where the player's character data is stored
         svs.player_offset = cls._unsigned_int64(data_stream)
 
+        svs.names = {}
+        for c, d in zip(svs.charas, svs.chara_details):
+            svs.names[d["charasGameParam"]["Index"]] = f"{c['Parameter']['lastname']} {c['Parameter']['firstname']}"
+
         return svs
 
     # Save Data Serialization
@@ -131,7 +135,6 @@ class SummerVacationSaveData:
 
     # Create an adjacency matrix representing the interaction data between characters
     def generate_memory_matrix(self, command=0, active=True, decision="yes"):
-        names = {x["charasGameParam"]["Index"]: x["charasGameParam"]["onesPropertys"][0]["name"] for x in self.chara_details}
         interract = "activeCommand" if active else "passiveCommand"
 
         assert interract in ["activeCommand", "passiveCommand"]
@@ -151,16 +154,14 @@ class SummerVacationSaveData:
                 else:
                     value = None
 
-                row[f"{to_index}:{names[to_index]}"] = value
+                row[f"{to_index}:{self.names[to_index]}"] = value
 
-            rows[f"{from_index}:{names[from_index]}"] = row
+            rows[f"{from_index}:{self.names[from_index]}"] = row
 
         return pd.DataFrame.from_dict(rows).T
 
     # Create an adjacency matrix representing the sexual interaction data between characters
     def generate_sexual_memory_matrix(self, command):
-        names = {x["charasGameParam"]["Index"]: x["charasGameParam"]["onesPropertys"][0]["name"] for x in self.chara_details}
-
         rows = {}
         for c in self.chara_details:
             from_index = c["charasGameParam"]["Index"]
@@ -172,8 +173,8 @@ class SummerVacationSaveData:
                 if from_index == to_index:
                     continue
                 value = table[to_index]["saveInfo"][command]
-                row[f"{to_index}:{names[to_index]}"] = value
+                row[f"{to_index}:{self.names[to_index]}"] = value
 
-            rows[f"{from_index}:{names[from_index]}"] = row
+            rows[f"{from_index}:{self.names[from_index]}"] = row
 
         return pd.DataFrame.from_dict(rows).T

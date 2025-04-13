@@ -308,6 +308,59 @@ class About(BlockData):
 class KKEx(BlockData):
     def __init__(self, data, version):
         super().__init__(name="KKEx", data=data, version=version)
+        self.data = self.recursive_unpack(self.data)
+
+    def recursive_unpack(self, data):
+        if isinstance(data, bytes):
+            try:
+                return SubKKEx(data, self.version)
+            except Exception:
+                return data
+        elif isinstance(data, list):
+            for i in range(len(data)):
+                data[i] = self.recursive_unpack(data[i])
+            return data
+        elif isinstance(data, dict):
+            for key in data.keys():
+                data[key] = self.recursive_unpack(data[key])
+            return data
+        else:
+            return data
+
+    def recursive_jsonalizable(self, data):
+        if isinstance(data, KKEx):
+            return data.jsonalizable()
+        elif isinstance(data, list):
+            return [self.recursive_jsonalizable(item) for item in data]
+        elif isinstance(data, dict):
+            return {key: self.recursive_jsonalizable(value) for key, value in data.items()}
+        else:
+            return data
+
+    def jsonalizable(self):
+        return self.recursive_jsonalizable(self.data)
+
+    def recursive_serialize(self, data):
+        if isinstance(data, KKEx):
+            return data.serialize()
+        elif isinstance(data, list):
+            return [self.recursive_serialize(item) for item in data]
+        elif isinstance(data, dict):
+            return {key: self.recursive_serialize(value) for key, value in data.items()}
+        else:
+            return data
+
+    def serialize(self):
+        data = self.recursive_serialize(self.data)
+        serialized, length = msg_pack(data)
+        return serialized, self.name, self.version
+
+
+class SubKKEx(KKEx):
+    def serialize(self):
+        data = self.recursive_serialize(self.data)
+        serialized, _ = msg_pack(data)
+        return serialized
 
 
 class UnknownBlockData(BlockData):

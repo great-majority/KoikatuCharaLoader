@@ -4,6 +4,7 @@ import base64
 import io
 import json
 import struct
+import traceback
 
 from kkloader.funcs import get_png, load_length, load_type, msg_pack, msg_pack_kkex, msg_unpack
 
@@ -313,23 +314,29 @@ class About(BlockData):
 
 class KKEx(BlockData):
     def __init__(self, data, version):
+        raw_data = data
         super().__init__(name="KKEx", data=data, version=version)
+        original_data = self.data
         self.data = self.recursive_unpack(self.data)
+        serialized = self.serialize()
+        if isinstance(serialized, tuple):
+            serialized = serialized[0]
+        if raw_data != serialized:
+            self.data = original_data
 
     def recursive_unpack(self, data):
         if isinstance(data, bytes):
             try:
                 return SubKKEx(data, self.version)
-            except Exception:
+            except Exception as e:
+                if str(e) != "unpack(b) received extra data." and str(e) != "Unpack failed: incomplete input":
+                    print("Unpacking exception", e)
+                    print(traceback.format_exc())
                 return data
         elif isinstance(data, list):
-            for i in range(len(data)):
-                data[i] = self.recursive_unpack(data[i])
-            return data
+            return [self.recursive_unpack(item) for item in data]
         elif isinstance(data, dict):
-            for key in data.keys():
-                data[key] = self.recursive_unpack(data[key])
-            return data
+            return {key: self.recursive_unpack(value) for key, value in data.items()}
         else:
             return data
 
@@ -358,19 +365,15 @@ class KKEx(BlockData):
 
     def serialize(self):
         data = self.recursive_serialize(self.data)
-        serialized, length = msg_pack(data)
+        serialized, _ = msg_pack_kkex(data)
         return serialized, self.name, self.version
 
 
 class SubKKEx(KKEx):
     def serialize(self):
         data = self.recursive_serialize(self.data)
-        serialized, _ = msg_pack(data)
+        serialized, _ = msg_pack_kkex(data)
         return serialized
-
-    def serialize(self):
-        data, _ = msg_pack_kkex(self.data)
-        return data, self.name, self.version
 
 
 class UnknownBlockData(BlockData):

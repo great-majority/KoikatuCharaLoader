@@ -1,6 +1,7 @@
 import struct
 
 from msgpack import packb, unpackb
+from msgpack.fallback import Packer as PurePacker
 
 
 def load_length(data_stream, struct_type):
@@ -46,6 +47,49 @@ def msg_unpack(data):
 
 def msg_pack(data):
     serialized = packb(data, use_single_float=True, use_bin_type=True)
+    return serialized, len(serialized)
+
+
+class KKExPacker(PurePacker):
+    KEYS_TO_OVERRIDE = {
+        "CurrentCrest",
+        "BreathingBPM",
+        "ResizeCentroid",
+        "clothingOffsetVersion",
+        "InmonLevel",
+        "SemenVolume",
+        "ReferralIndex",
+        "MenstruationSchedule",
+        "EnableBulge",
+        "AllCharaOverlayTable",
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        "LeaveSchoolWeek",
+        "ReturnToSchoolWeek",
+    }
+
+    def _pack_map_pairs(self, n, pairs, nest_limit):
+        self._pack_map_header(n)
+        for k, v in pairs:
+            if k in self.KEYS_TO_OVERRIDE and isinstance(k, int):
+                self._buffer.write(b"\xd2" + struct.pack(">i", k))
+            else:
+                self._pack(k, nest_limit - 1)
+
+            if k in self.KEYS_TO_OVERRIDE and isinstance(v, int):
+                self._buffer.write(b"\xd2" + struct.pack(">i", v))
+            else:
+                self._pack(v, nest_limit - 1)
+
+
+def msg_pack_kkex(data):
+    packer = KKExPacker(use_single_float=True, use_bin_type=True)
+    serialized = packer.pack(data)
     return serialized, len(serialized)
 
 

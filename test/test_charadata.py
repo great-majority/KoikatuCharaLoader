@@ -61,59 +61,90 @@ def test_load_summervacation_character():
 
 
 def test_save_character():
+    with open("./data/kk_chara.png", "rb") as f:
+        raw_data = f.read()
     tmpfile = tempfile.NamedTemporaryFile()
     kc = KoikatuCharaData.load("./data/kk_chara.png")
     kc.save(tmpfile.name)
     kc2 = KoikatuCharaData.load(tmpfile.name)
     assert kc["Parameter"]["nickname"] == kc2["Parameter"]["nickname"]
+    assert raw_data == bytes(kc)
     assert bytes(kc) == bytes(kc2)
 
 
 def test_save_sunshine_character():
+    with open("./data/kks_chara.png", "rb") as f:
+        raw_data = f.read()
     tmpfile = tempfile.NamedTemporaryFile()
     kc = KoikatuCharaData.load("./data/kks_chara.png")
     kc.save(tmpfile.name)
     kc2 = KoikatuCharaData.load(tmpfile.name)
     assert kc["Parameter"]["nickname"] == kc2["Parameter"]["nickname"]
+    assert raw_data == bytes(kc)
     assert bytes(kc) == bytes(kc2)
 
 
+def test_save_modding_character():
+    with open("./data/kk_mod_chara.png", "rb") as f:
+        raw_data = f.read()
+    tmpfile = tempfile.NamedTemporaryFile()
+    kc = KoikatuCharaData.load("./data/kk_mod_chara.png")
+    kc.save(tmpfile.name)
+    kc2 = KoikatuCharaData.load(tmpfile.name)
+    assert kc["Parameter"]["nickname"] == kc2["Parameter"]["nickname"]
+    assert bytes(kc) == bytes(kc2)
+    assert raw_data == bytes(kc)
+    assert raw_data == bytes(kc2)
+
+
 def test_save_emocre_character():
+    with open("./data/ec_chara.png", "rb") as f:
+        raw_data = f.read()
     tmpfile = tempfile.NamedTemporaryFile()
     ec = EmocreCharaData.load("./data/ec_chara.png")
     ec.save(tmpfile.name)
     ec2 = EmocreCharaData.load(tmpfile.name)
     assert ec["Parameter"]["fullname"] == ec2["Parameter"]["fullname"]
+    assert raw_data == bytes(ec)
     assert bytes(ec) == bytes(ec2)
 
 
 def test_save_honeycome_party_character():
+    with open("./data/hcp_chara.png", "rb") as f:
+        raw_data = f.read()
     tmpfile = tempfile.NamedTemporaryFile()
     hc = HoneycomeCharaData.load("./data/hcp_chara.png")
     hc.save(tmpfile.name)
     hc2 = HoneycomeCharaData.load(tmpfile.name)
     assert hc["Parameter"]["lastname"] == hc2["Parameter"]["lastname"]
     assert hc["Parameter"]["firstname"] == hc2["Parameter"]["firstname"]
+    assert raw_data == bytes(hc)
     assert bytes(hc) == bytes(hc2)
 
 
 def test_save_honeycome_character():
+    with open("./data/hc_chara.png", "rb") as f:
+        raw_data = f.read()
     tmpfile = tempfile.NamedTemporaryFile()
     hc = HoneycomeCharaData.load("./data/hc_chara.png")
     hc.save(tmpfile.name)
     hc2 = HoneycomeCharaData.load(tmpfile.name)
     assert hc["Parameter"]["lastname"] == hc2["Parameter"]["lastname"]
     assert hc["Parameter"]["firstname"] == hc2["Parameter"]["firstname"]
+    assert raw_data == bytes(hc)
     assert bytes(hc) == bytes(hc2)
 
 
 def test_save_summervacation_character():
+    with open("./data/sv_chara.png", "rb") as f:
+        raw_data = f.read()
     tmpfile = tempfile.NamedTemporaryFile()
     svc = SummerVacationCharaData.load("./data/sv_chara.png")
     svc.save(tmpfile.name)
     svc2 = SummerVacationCharaData.load(tmpfile.name)
     assert svc["Parameter"]["lastname"] == svc2["Parameter"]["lastname"]
     assert svc["Parameter"]["firstname"] == svc2["Parameter"]["firstname"]
+    assert raw_data == bytes(svc)
     assert bytes(svc) == bytes(svc2)
 
 

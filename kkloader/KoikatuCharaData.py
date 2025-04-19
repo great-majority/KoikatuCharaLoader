@@ -5,7 +5,7 @@ import io
 import json
 import struct
 
-from kkloader.funcs import get_png, load_length, load_type, msg_pack, msg_unpack
+from kkloader.funcs import get_png, load_length, load_type, msg_pack, msg_pack_kkex, msg_unpack
 
 
 def bin_to_str(serial):
@@ -65,6 +65,9 @@ class KoikatuCharaData:
 
         self.unknown_blockdata = []
         self.blockdata = []
+        self.original_lstinfo_order = list(map(lambda x: x["name"], lstinfo_index["lstInfo"]))
+        self.serialized_lstinfo_order = list(map(lambda x: x["name"], sorted(lstinfo_index["lstInfo"], key=lambda x: x["pos"])))
+
         for i in lstinfo_index["lstInfo"]:
             name = i["name"]
             pos = i["pos"]
@@ -107,12 +110,15 @@ class KoikatuCharaData:
         cumsum = 0
         chara_values = []
         lstinfos = []
-        for v in self.blockdata:
+        for v in self.serialized_lstinfo_order:
             data, name, version = getattr(self, v).serialize()
             lstinfos.append({"name": name, "version": version, "pos": cumsum, "size": len(data)})
             chara_values.append(data)
             cumsum += len(data)
         chara_values = b"".join(chara_values)
+
+        lstinfos_dict = {item["name"]: item for item in lstinfos}
+        lstinfos = [lstinfos_dict[k] for k in self.original_lstinfo_order]
 
         blockdata_s, blockdata_l = msg_pack({"lstInfo": lstinfos})
         ipack = struct.Struct("i")
@@ -361,6 +367,10 @@ class SubKKEx(KKEx):
         data = self.recursive_serialize(self.data)
         serialized, _ = msg_pack(data)
         return serialized
+
+    def serialize(self):
+        data, _ = msg_pack_kkex(self.data)
+        return data, self.name, self.version
 
 
 class UnknownBlockData(BlockData):

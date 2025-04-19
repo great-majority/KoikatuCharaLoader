@@ -75,6 +75,11 @@ As shown, both lines access the same `kc.Custom`.
 
 ### Find Variables
 
+You can try out the character information display from this program in your browser on [this site](https://kk-snippets.streamlit.app/chara-data-viewer).
+If you are looking to identify which variables to modify, this interface can serve as a useful starting point for narrowing down potential candidates.
+
+![](https://i.imgur.com/E2hAdm1.png)
+
 By using the `prettify` method, the contents of the variables within the data block will be displayed in a more readable format.
 This is useful for identifying which variables exist.
 ```

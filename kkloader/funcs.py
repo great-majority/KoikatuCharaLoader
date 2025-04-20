@@ -26,18 +26,18 @@ def load_type(data_stream, struct_type):
     return struct.unpack(struct_type, data_stream.read(struct.calcsize(struct_type)))[0]
 
 
-def write_string(data_stream, value):
-    length_bytes = b""
+def write_string(data_stream, value: bytes):
     length = len(value)
+    parts = []
     while True:
-        serial = length & 0b1111111
-        if length >> 7 != 0:
-            length = length >> 7
-            length_bytes += struct.pack("b", 0b10000000 | serial)
+        byte = length & 0x7F
+        length >>= 7
+        if length:
+            parts.append(0x80 | byte)
         else:
-            length_bytes += struct.pack("b", serial)
+            parts.append(byte)
             break
-    data_stream.write(length_bytes)
+    data_stream.write(bytes(parts))
     data_stream.write(value)
 
 

@@ -4,7 +4,7 @@ import json
 import struct
 from typing import Dict, Any, BinaryIO
 
-from kkloader.funcs import load_length, load_string, get_png
+from kkloader.funcs import load_length, load_string, get_png, write_string
 
 
 class KoikatuSceneObjectLoader:
@@ -196,10 +196,11 @@ class KoikatuSceneObjectLoader:
         """Load item info data"""
         # Based on OIItemInfo.Load in C#
         data = {}
-        
+
         # Skip ObjectInfo base data
         KoikatuSceneObjectLoader.skip_object_info_base(data_stream)
-        
+        data_stream.read(4)
+
         # Read group, category, no
         data["group"] = struct.unpack("i", data_stream.read(4))[0]
         data["category"] = struct.unpack("i", data_stream.read(4))[0]
@@ -210,33 +211,11 @@ class KoikatuSceneObjectLoader:
         
         # Read anime speed
         data["anime_speed"] = struct.unpack("f", data_stream.read(4))[0]
-        
         # Read colors
         data["colors"] = []
         for _ in range(8):
-            try:
-                color_bytes = load_string(data_stream)
-                
-                # 先頭の文字が文字列の長さを示している場合、それを取り除く
-                if color_bytes and len(color_bytes) > 1:
-                    # 先頭の文字を取り除く
-                    color_bytes_without_prefix = color_bytes[1:]
-                    
-                    # JSONとして解析
-                    try:
-                        color_json = color_bytes_without_prefix.decode('utf-8')
-                        # カンマが抜けている場合があるので、追加する
-                        color_json = color_json.replace('"g"', '"g":').replace('"b"', '"b":').replace('"a"', '"a":')
-                        data["colors"].append(json.loads("{" + color_json))
-                    except (UnicodeDecodeError, json.JSONDecodeError):
-                        # デコードに失敗した場合は、デフォルトの色を追加
-                        data["colors"].append({"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0})
-                else:
-                    # デフォルトの色を追加
-                    data["colors"].append({"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0})
-            except Exception:
-                # エラーが発生した場合は、デフォルトの色を追加
-                data["colors"].append({"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0})
+            color_bytes = load_string(data_stream)
+            data["colors"].append(json.loads(color_bytes.decode('utf-8')))
         
         # Read patterns
         data["patterns"] = []
@@ -249,20 +228,14 @@ class KoikatuSceneObjectLoader:
         
         # Read line color
         line_color_json = load_string(data_stream).decode('utf-8')
-        try:
-            data["line_color"] = json.loads(line_color_json)
-        except json.JSONDecodeError:
-            data["line_color"] = {"r": 0.0, "g": 0.0, "b": 0.0, "a": 1.0}
+        data["line_color"] = json.loads(line_color_json)
         
         # Read line width
         data["line_width"] = struct.unpack("f", data_stream.read(4))[0]
         
         # Read emission color
         emission_color_json = load_string(data_stream).decode('utf-8')
-        try:
-            data["emission_color"] = json.loads(emission_color_json)
-        except json.JSONDecodeError:
-            data["emission_color"] = {"r": 0.0, "g": 0.0, "b": 0.0, "a": 1.0}
+        data["emission_color"] = json.loads(emission_color_json)
         
         # Read emission power
         data["emission_power"] = struct.unpack("f", data_stream.read(4))[0]
@@ -409,12 +382,8 @@ class KoikatuSceneObjectLoader:
         pattern_data["clamp"] = bool(struct.unpack("b", data_stream.read(1))[0])
         
         # Read uv (Vector4)
-        try:
-            uv_json = load_string(data_stream).decode('utf-8')
-            pattern_data["uv"] = json.loads(uv_json)
-        except Exception:
-            # エラーが発生した場合は、デフォルトの値を設定
-            pattern_data["uv"] = {"x": 0.0, "y": 0.0, "z": 1.0, "w": 1.0}
+        uv_json = load_string(data_stream).decode('utf-8')
+        pattern_data["uv"] = json.loads(uv_json)
         
         # Read rot
         pattern_data["rot"] = struct.unpack("f", data_stream.read(4))[0]
@@ -422,17 +391,194 @@ class KoikatuSceneObjectLoader:
         return pattern_data
     
     @staticmethod
+    def save_item_info(data_stream: BinaryIO, obj_info: Dict[str, Any]) -> None:
+        """Save item info data"""
+        # Based on OIItemInfo.Save in C#
+        data = obj_info["data"]
+        
+        # Save ObjectInfo base data
+        KoikatuSceneObjectLoader.save_object_info_base(data_stream, data)
+        data_stream.write(struct.pack("i", 0))
+        
+        # Write group, category, no
+        data_stream.write(struct.pack("i", data["group"]))
+        data_stream.write(struct.pack("i", data["category"]))
+        data_stream.write(struct.pack("i", data["no"]))
+        
+        # Write anime pattern
+        data_stream.write(struct.pack("i", data["anime_pattern"]))
+        
+        # Write anime speed
+        data_stream.write(struct.pack("f", data["anime_speed"]))
+        
+        # Write colors
+        for color in data["colors"]:
+            KoikatuSceneObjectLoader._write_string(data_stream, json.dumps(color).encode('utf-8'))
+        
+        # Write patterns
+        for pattern in data["patterns"]:
+            KoikatuSceneObjectLoader.save_pattern_info(data_stream, pattern)
+        
+        # Write alpha
+        data_stream.write(struct.pack("f", data["alpha"]))
+        
+        # Write line color
+        KoikatuSceneObjectLoader._write_string(data_stream, json.dumps(data["line_color"]).encode('utf-8'))
+        
+        # Write line width
+        data_stream.write(struct.pack("f", data["line_width"]))
+        
+        # Write emission color
+        KoikatuSceneObjectLoader._write_string(data_stream, json.dumps(data["emission_color"]).encode('utf-8'))
+        
+        # Write emission power
+        data_stream.write(struct.pack("f", data["emission_power"]))
+        
+        # Write light cancel
+        data_stream.write(struct.pack("f", data["light_cancel"]))
+        
+        # Write panel
+        KoikatuSceneObjectLoader.save_pattern_info(data_stream, data["panel"])
+        
+        # Write enable FK
+        data_stream.write(struct.pack("b", int(data["enable_fk"])))
+        
+        # Write bones count
+        data_stream.write(struct.pack("i", len(data["bones"])))
+        
+        # Write bones data
+        for bone_key, bone_data in data["bones"].items():
+            # Write bone key
+            bone_key_bytes = bone_key.encode('utf-8')
+            data_stream.write(struct.pack("i", len(bone_key_bytes)))
+            data_stream.write(bone_key_bytes)
+            
+            # Write bone data
+            KoikatuSceneObjectLoader.save_bone_info(data_stream, bone_data)
+        
+        # Write enable dynamic bone
+        data_stream.write(struct.pack("b", int(data["enable_dynamic_bone"])))
+        
+        # Write anime normalized time
+        data_stream.write(struct.pack("f", data["anime_normalized_time"]))
+        
+        # Write child objects count
+        data_stream.write(struct.pack("i", len(data.get("child", []))))
+        
+        # Write child objects data
+        for child in data.get("child", []):
+            KoikatuSceneObjectLoader.save_child_object(data_stream, child)
+    
+    @staticmethod
+    def save_object_info_base(data_stream: BinaryIO, data: Dict[str, Any]) -> None:
+        """Save ObjectInfo base data"""
+        # This is a placeholder implementation based on the skip_object_info_base method
+        # In a real implementation, we would use actual data from the object
+        
+        # Write position (Vector3)
+        pos = data.get("position", {"x": 0.0, "y": 0.0, "z": 0.0})
+        data_stream.write(struct.pack("f", pos.get("x", 0.0)))
+        data_stream.write(struct.pack("f", pos.get("y", 0.0)))
+        data_stream.write(struct.pack("f", pos.get("z", 0.0)))
+        
+        # Write rotation (Vector3)
+        rot = data.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0})
+        data_stream.write(struct.pack("f", rot.get("x", 0.0)))
+        data_stream.write(struct.pack("f", rot.get("y", 0.0)))
+        data_stream.write(struct.pack("f", rot.get("z", 0.0)))
+        
+        # Write scale (Vector3)
+        scale = data.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0})
+        data_stream.write(struct.pack("f", scale.get("x", 1.0)))
+        data_stream.write(struct.pack("f", scale.get("y", 1.0)))
+        data_stream.write(struct.pack("f", scale.get("z", 1.0)))
+        
+        # Write treeState
+        data_stream.write(struct.pack("i", data.get("treeState", 0)))
+        
+        # Write visible
+        data_stream.write(struct.pack("b", int(data.get("visible", True))))
+    
+    @staticmethod
+    def save_pattern_info(data_stream: BinaryIO, pattern_data: Dict[str, Any]) -> None:
+        """Save pattern info data"""
+        # Based on PatternInfo.Save in C#
+        
+        # Write key
+        data_stream.write(struct.pack("i", pattern_data["key"]))
+        
+        # Write filePath
+        KoikatuSceneObjectLoader._write_string(data_stream, pattern_data["file_path"].encode('utf-8'))
+        
+        # Write clamp
+        data_stream.write(struct.pack("b", int(pattern_data["clamp"])))
+        
+        # Write uv (Vector4)
+        KoikatuSceneObjectLoader._write_string(data_stream, json.dumps(pattern_data["uv"]).encode('utf-8'))
+        
+        # Write rot
+        data_stream.write(struct.pack("f", pattern_data["rot"]))
+    
+    @staticmethod
+    def save_bone_info(data_stream: BinaryIO, bone_data: Dict[str, Any]) -> None:
+        """Save bone info data"""
+        # This is a placeholder implementation
+        # In a real implementation, we would use actual data from the bone
+        KoikatuSceneObjectLoader.save_object_info_base(data_stream, bone_data)
+    
+    @staticmethod
+    def save_child_object(data_stream: BinaryIO, child_data: Dict[str, Any]) -> None:
+        """Save child object data"""
+        # This is a placeholder implementation
+        # In a real implementation, we would use actual data from the child object
+        KoikatuSceneObjectLoader.save_object_info_base(data_stream, child_data)
+    
+    @staticmethod
+    def save_char_info(data_stream: BinaryIO, obj_info: Dict[str, Any]) -> None:
+        """Save character info data"""
+        raise NotImplementedError("save_char_info is not implemented")
+    
+    @staticmethod
+    def save_light_info(data_stream: BinaryIO, obj_info: Dict[str, Any]) -> None:
+        """Save light info data"""
+        raise NotImplementedError("save_light_info is not implemented")
+    
+    @staticmethod
+    def save_folder_info(data_stream: BinaryIO, obj_info: Dict[str, Any]) -> None:
+        """Save folder info data"""
+        raise NotImplementedError("save_folder_info is not implemented")
+    
+    @staticmethod
+    def save_route_info(data_stream: BinaryIO, obj_info: Dict[str, Any]) -> None:
+        """Save route info data"""
+        raise NotImplementedError("save_route_info is not implemented")
+    
+    @staticmethod
+    def save_camera_info(data_stream: BinaryIO, obj_info: Dict[str, Any]) -> None:
+        """Save camera info data"""
+        raise NotImplementedError("save_camera_info is not implemented")
+    
+    @staticmethod
+    def save_text_info(data_stream: BinaryIO, obj_info: Dict[str, Any]) -> None:
+        """Save text info data"""
+        raise NotImplementedError("save_text_info is not implemented")
+    
+    @staticmethod
+    def _write_string(data_stream: BinaryIO, value: bytes) -> None:
+        """
+        Write a string to the data stream using the same format as load_string
+        Using write_string from funcs.py
+        """
+        write_string(data_stream, value)
+    
+    @staticmethod
     def parse_color_json(json_str: str) -> Dict[str, float]:
         """Parse color from JSON string"""
-        try:
-            # JSONとして解析
-            color_data = json.loads(json_str)
-            return {
-                "r": color_data.get("r", 0),
-                "g": color_data.get("g", 0),
-                "b": color_data.get("b", 0),
-                "a": color_data.get("a", 1.0)
-            }
-        except json.JSONDecodeError as e:
-            # JSONとして解析できない場合はエラーを発生させる
-            raise ValueError(f"Invalid JSON color data: {json_str[:30]}... Error: {str(e)}")
+        # JSONとして解析
+        color_data = json.loads(json_str)
+        return {
+            "r": color_data.get("r", 0),
+            "g": color_data.get("g", 0),
+            "b": color_data.get("b", 0),
+            "a": color_data.get("a", 1.0)
+        }

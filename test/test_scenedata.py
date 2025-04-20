@@ -1,3 +1,5 @@
+import tempfile
+
 from kkloader import KoikatuSceneData
 
 
@@ -40,3 +42,36 @@ def test_scene_to_dict():
     
     # Check that the object count matches
     assert scene_dict["objectCount"] == len(scene_data.dicObject)
+
+
+def test_save_scene():
+    """Test saving a Koikatu scene file"""
+    # Load the original scene data
+    with open("./data/kk_scene_simple.png", "rb") as f:
+        raw_data = f.read()
+    
+    # Load the scene data
+    scene_data = KoikatuSceneData.load("./data/kk_scene_simple.png")
+    
+    # Save to a temporary file
+    tmpfile = tempfile.NamedTemporaryFile()
+    scene_data.save(tmpfile.name)
+    
+    # Load the saved scene data
+    scene_data2 = KoikatuSceneData.load(tmpfile.name)
+    
+    # Check that the basic properties match
+    assert scene_data.version == scene_data2.version
+    assert scene_data.map == scene_data2.map
+    assert len(scene_data.dicObject) == len(scene_data2.dicObject)
+    
+    # Check that the object data matches
+    obj_key = list(scene_data.dicObject.keys())[0]
+    obj_key2 = list(scene_data2.dicObject.keys())[0]
+    
+    assert scene_data.dicObject[obj_key]["type"] == scene_data2.dicObject[obj_key2]["type"]
+    
+    # Check that the serialized data matches
+    assert len(raw_data) == len(bytes(scene_data))
+    assert raw_data == bytes(scene_data)
+    assert bytes(scene_data) == bytes(scene_data2)

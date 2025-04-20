@@ -2,9 +2,10 @@
 
 import io
 import json
+import struct
 from typing import Union
 
-from kkloader.funcs import get_png, load_length, load_string, load_type, msg_unpack
+from kkloader.funcs import get_png, load_length, load_string, load_type, msg_unpack, msg_pack, write_string
 from kkloader.KoikatuSceneObjectLoader import KoikatuSceneObjectLoader
 
 
@@ -121,7 +122,6 @@ class KoikatuSceneData:
             elif obj_type == 7:  # OITextInfo
                 KoikatuSceneObjectLoader.load_text_info(data_stream, obj_info)
             else:
-                print(f"Unknown object type:{obj_type}")
                 pass
                 
             ks.dicObject[key] = obj_info
@@ -228,7 +228,6 @@ class KoikatuSceneData:
         if cls._compare_versions(ks.dataVersion, "1.1.2.0") >= 0:
             sky_info_bytes = load_length(data_stream, "i")
             ks.skyInfo = msg_unpack(sky_info_bytes)
-        
         # Read camera data
         ks.cameraSaveData = ks._load_camera_data(data_stream)
         
@@ -286,7 +285,6 @@ class KoikatuSceneData:
         """
         # Read version
         version = load_type(data_stream, "i")
-        
         # Read position (Vector3)
         pos_x = load_type(data_stream, "f")
         pos_y = load_type(data_stream, "f")
@@ -475,6 +473,321 @@ class KoikatuSceneData:
                 return 1
         
         return 0
+    
+    def save(self, filelike: Union[str, io.BytesIO]) -> None:
+        """
+        Save Koikatu scene data to a file or BytesIO object.
+        
+        Args:
+            filelike: Path to the file or BytesIO object to save the scene data to
+        """
+        if isinstance(filelike, str):
+            with open(filelike, "bw") as f:
+                f.write(bytes(self))
+        elif isinstance(filelike, io.BytesIO):
+            filelike.write(bytes(self))
+        else:
+            raise ValueError(f"Unsupported output type: {type(filelike)}")
+    
+    def __bytes__(self) -> bytes:
+        """
+        Convert the scene data to bytes.
+        
+        Returns:
+            bytes: The scene data as bytes
+        """
+        data_stream = io.BytesIO()
+        
+        # Write PNG data if available
+        if self.image:
+            data_stream.write(self.image)
+        
+        # Write version
+        version_bytes = self.version.encode('utf-8')
+        data_stream.write(struct.pack("b", len(version_bytes)))
+        data_stream.write(version_bytes)
+        
+        # Write object dictionary
+        data_stream.write(struct.pack("i", len(self.dicObject)))
+        for key, obj_info in self.dicObject.items():
+            data_stream.write(struct.pack("i", key))
+            data_stream.write(struct.pack("i", obj_info["type"]))
+            
+            # Save object data based on type
+            try:
+                if obj_info["type"] == 0:  # OICharInfo
+                    KoikatuSceneObjectLoader.save_char_info(data_stream, obj_info)
+                elif obj_info["type"] == 1:  # OIItemInfo
+                    KoikatuSceneObjectLoader.save_item_info(data_stream, obj_info)
+                elif obj_info["type"] == 2:  # OILightInfo
+                    KoikatuSceneObjectLoader.save_light_info(data_stream, obj_info)
+                elif obj_info["type"] == 3:  # OIFolderInfo
+                    KoikatuSceneObjectLoader.save_folder_info(data_stream, obj_info)
+                elif obj_info["type"] == 4:  # OIRouteInfo
+                    KoikatuSceneObjectLoader.save_route_info(data_stream, obj_info)
+                elif obj_info["type"] == 5:  # OICameraInfo
+                    KoikatuSceneObjectLoader.save_camera_info(data_stream, obj_info)
+                elif obj_info["type"] == 7:  # OITextInfo
+                    KoikatuSceneObjectLoader.save_text_info(data_stream, obj_info)
+                else:
+                    raise ValueError(f"Unknown object type:{obj_info['type']}")
+            except NotImplementedError as e:
+                # 実装されていない関数が呼ばれた場合は、エラーを発生させる
+                raise NotImplementedError(f"Cannot save object of type {obj_info['type']}: {str(e)}")
+        
+        # Write map info
+        data_stream.write(struct.pack("i", self.map))
+        
+        # Write caMap (ChangeAmount)
+        self._save_change_amount(data_stream)
+        
+        # Write sunLightType
+        data_stream.write(struct.pack("i", self.sunLightType))
+        
+        # Write mapOption
+        data_stream.write(struct.pack("b", int(self.mapOption)))
+        
+        # Write aceNo
+        data_stream.write(struct.pack("i", self.aceNo))
+        
+        # Write aceBlend
+        data_stream.write(struct.pack("f", self.aceBlend))
+        
+        # Write AOE settings
+        data_stream.write(struct.pack("b", int(self.enableAOE)))
+        aoe_color_bytes = json.dumps(self.aoeColor).encode('utf-8')
+        data_stream.write(struct.pack("b", len(aoe_color_bytes)))
+        data_stream.write(aoe_color_bytes)
+        data_stream.write(struct.pack("f", self.aoeRadius))
+        
+        # Write bloom settings
+        data_stream.write(struct.pack("b", int(self.enableBloom)))
+        data_stream.write(struct.pack("f", self.bloomIntensity))
+        data_stream.write(struct.pack("f", self.bloomBlur))
+        data_stream.write(struct.pack("f", self.bloomThreshold))
+        
+        # Write depth settings
+        data_stream.write(struct.pack("b", int(self.enableDepth)))
+        data_stream.write(struct.pack("f", self.depthFocalSize))
+        data_stream.write(struct.pack("f", self.depthAperture))
+        
+        # Write vignette settings
+        data_stream.write(struct.pack("b", int(self.enableVignette)))
+        
+        # Write fog settings
+        data_stream.write(struct.pack("b", int(self.enableFog)))
+        fog_color_bytes = json.dumps(self.fogColor).encode('utf-8')
+        data_stream.write(struct.pack("b", len(fog_color_bytes)))
+        data_stream.write(fog_color_bytes)
+        data_stream.write(struct.pack("f", self.fogHeight))
+        data_stream.write(struct.pack("f", self.fogStartDistance))
+        
+        # Write sun shafts settings
+        data_stream.write(struct.pack("b", int(self.enableSunShafts)))
+        sun_threshold_color_bytes = json.dumps(self.sunThresholdColor).encode('utf-8')
+        data_stream.write(struct.pack("b", len(sun_threshold_color_bytes)))
+        data_stream.write(sun_threshold_color_bytes)
+        sun_color_bytes = json.dumps(self.sunColor).encode('utf-8')
+        data_stream.write(struct.pack("b", len(sun_color_bytes)))
+        data_stream.write(sun_color_bytes)
+        
+        # Write sunCaster
+        data_stream.write(struct.pack("i", self.sunCaster))
+        
+        # Write enableShadow
+        data_stream.write(struct.pack("b", int(self.enableShadow)))
+        
+        # Write face settings
+        data_stream.write(struct.pack("b", int(self.faceNormal)))
+        data_stream.write(struct.pack("b", int(self.faceShadow)))
+        data_stream.write(struct.pack("f", self.lineColorG))
+        ambient_shadow_bytes = json.dumps(self.ambientShadow).encode('utf-8')
+        data_stream.write(struct.pack("b", len(ambient_shadow_bytes)))
+        data_stream.write(ambient_shadow_bytes)
+        
+        # Write additional face settings
+        data_stream.write(struct.pack("f", self.lineWidthG))
+        data_stream.write(struct.pack("i", self.rampG))
+        data_stream.write(struct.pack("f", self.ambientShadowG))
+        
+        # Write shaderType
+        data_stream.write(struct.pack("i", self.shaderType))
+        
+        # Write skyInfo
+        sky_info_bytes, sky_info_len = msg_pack(self.skyInfo)
+        data_stream.write(struct.pack("i", sky_info_len))
+        data_stream.write(sky_info_bytes)
+        
+        # Write camera data
+        self._save_camera_data(data_stream, self.cameraSaveData)
+        
+        # Write camera array data
+        for camera in self.cameraData:
+            self._save_camera_data(data_stream, camera)
+        
+        # Write light settings
+        self._save_chara_light(data_stream, self.charaLight)
+        self._save_map_light(data_stream, self.mapLight)
+        
+        # Write BGM, ENV, and outside sound settings
+        self._save_bgm_ctrl(data_stream, self.bgmCtrl)
+        self._save_env_ctrl(data_stream, self.envCtrl)
+        self._save_outside_sound_ctrl(data_stream, self.outsideSoundCtrl)
+        
+        # Write background and frame
+        background_bytes = self.background.encode('utf-8')
+        data_stream.write(struct.pack("b", len(background_bytes)))
+        data_stream.write(background_bytes)
+        frame_bytes = self.frame.encode('utf-8')
+        data_stream.write(struct.pack("b", len(frame_bytes)))
+        data_stream.write(frame_bytes)
+        
+        return data_stream.getvalue()
+    
+    def _save_change_amount(self, data_stream):
+        """
+        Save ChangeAmount data
+        Based on ChangeAmount.Save in C#
+        """
+        # Write position (Vector3)
+        data_stream.write(struct.pack("f", self.caMap["pos"]["x"]))
+        data_stream.write(struct.pack("f", self.caMap["pos"]["y"]))
+        data_stream.write(struct.pack("f", self.caMap["pos"]["z"]))
+        
+        # Write rotation (Vector3)
+        data_stream.write(struct.pack("f", self.caMap["rot"]["x"]))
+        data_stream.write(struct.pack("f", self.caMap["rot"]["y"]))
+        data_stream.write(struct.pack("f", self.caMap["rot"]["z"]))
+        
+        # Write scale (Vector3)
+        data_stream.write(struct.pack("f", self.caMap["scale"]["x"]))
+        data_stream.write(struct.pack("f", self.caMap["scale"]["y"]))
+        data_stream.write(struct.pack("f", self.caMap["scale"]["z"]))
+    
+    def _save_camera_data(self, data_stream, camera_data):
+        """
+        Save camera data
+        Based on CameraControl.CameraData.Save in C#
+        """
+        
+        # Write version (always use version 2)
+        data_stream.write(struct.pack("i", 2))
+        
+        # Write position (Vector3)
+        data_stream.write(struct.pack("f", camera_data["position"]["x"]))
+        data_stream.write(struct.pack("f", camera_data["position"]["y"]))
+        data_stream.write(struct.pack("f", camera_data["position"]["z"]))
+        
+        # Write rotation (Vector3)
+        data_stream.write(struct.pack("f", camera_data["rotation"]["x"]))
+        data_stream.write(struct.pack("f", camera_data["rotation"]["y"]))
+        data_stream.write(struct.pack("f", camera_data["rotation"]["z"]))
+        
+        # Write distance (Vector3)
+        data_stream.write(struct.pack("f", camera_data["distance"]["x"]))
+        data_stream.write(struct.pack("f", camera_data["distance"]["y"]))
+        data_stream.write(struct.pack("f", camera_data["distance"]["z"]))
+        
+        # Write field of view
+        data_stream.write(struct.pack("f", camera_data["fieldOfView"]))
+        
+    
+    def _save_chara_light(self, data_stream, light_data):
+        """
+        Save character light data
+        Based on CameraLightCtrl.LightInfo.Save in C#
+        """
+        
+        # Write color (JSON string)
+        color_bytes = json.dumps(light_data["color"]).encode('utf-8')
+        self._write_string(data_stream, color_bytes)
+        
+        # Write intensity (float)
+        data_stream.write(struct.pack("f", light_data["intensity"]))
+        
+        # Write rotation (2 floats)
+        data_stream.write(struct.pack("f", light_data["rot"][0]))
+        data_stream.write(struct.pack("f", light_data["rot"][1]))
+        
+        # Write shadow (boolean)
+        data_stream.write(struct.pack("b", int(light_data["shadow"])))
+        
+    
+    def _save_map_light(self, data_stream, light_data):
+        """
+        Save map light data
+        Based on CameraLightCtrl.MapLightInfo.Save in C#
+        """
+        
+        # First save base LightInfo data
+        # Write color (JSON string)
+        color_bytes = json.dumps(light_data["color"]).encode('utf-8')
+        self._write_string(data_stream, color_bytes)
+        
+        # Write intensity (float)
+        data_stream.write(struct.pack("f", light_data["intensity"]))
+        
+        # Write rotation (2 floats)
+        data_stream.write(struct.pack("f", light_data["rot"][0]))
+        data_stream.write(struct.pack("f", light_data["rot"][1]))
+        
+        # Write shadow (boolean)
+        data_stream.write(struct.pack("b", int(light_data["shadow"])))
+        
+        # Write MapLightInfo specific data
+        # Write light type (int)
+        data_stream.write(struct.pack("i", light_data["type"]))
+        
+    
+    def _save_bgm_ctrl(self, data_stream, bgm_data):
+        """
+        Save BGM control data
+        Based on BGMCtrl.Save in C#
+        """
+        # Write repeat mode (int32)
+        data_stream.write(struct.pack("i", bgm_data["repeat"]))
+        
+        # Write BGM number (int32)
+        data_stream.write(struct.pack("i", bgm_data["no"]))
+        
+        # Write play state (boolean)
+        data_stream.write(struct.pack("b", int(bgm_data["play"])))
+    
+    def _save_env_ctrl(self, data_stream, env_data):
+        """
+        Save environment control data
+        Based on ENVCtrl.Save in C#
+        """
+        # Write repeat mode (int32)
+        data_stream.write(struct.pack("i", env_data["repeat"]))
+        
+        # Write ENV number (int32)
+        data_stream.write(struct.pack("i", env_data["no"]))
+        
+        # Write play state (boolean)
+        data_stream.write(struct.pack("b", int(env_data["play"])))
+    
+    def _save_outside_sound_ctrl(self, data_stream, sound_data):
+        """
+        Save outside sound control data
+        Based on OutsideSoundCtrl.Save in C#
+        """
+        # Write repeat mode (int32)
+        data_stream.write(struct.pack("i", sound_data["repeat"]))
+        
+        # Write file name (string)
+        file_name_bytes = sound_data["fileName"].encode('utf-8')
+        self._write_string(data_stream, file_name_bytes)
+        
+        # Write play state (boolean)
+        data_stream.write(struct.pack("b", int(sound_data["play"])))
+    
+    def _write_string(self, data_stream, value):
+        """
+        Write a string to the data stream using the same format as load_string
+        Using write_string from funcs.py
+        """
+        write_string(data_stream, value)
     
     def to_dict(self):
         """Convert the scene data to a dictionary"""

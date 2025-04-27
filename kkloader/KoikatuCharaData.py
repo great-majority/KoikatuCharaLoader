@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 
 import base64
+import copy
 import io
 import json
 import struct
@@ -312,12 +313,70 @@ class About(BlockData):
 
 
 class KKEx(BlockData):
-    def __init__(self, data, version):
+    NESTED_KEYS = [
+        ["Additional_Card_Info", 1, "CardInfo"],
+        ["Additional_Card_Info", 1, "CoordinateInfo"],
+        ["KCOX", 1, "Overlays"],
+        # ["KKABMPlugin.ABMData", 1, "boneData"], # ExtType 99
+        ["KSOX", 1, "Lookup"],
+        ["MigrationHelper", 1, "Info"],
+        ["com.deathweasel.bepinex.clothingunlocker", 1, "ClothingUnlocked"],
+        ["com.deathweasel.bepinex.dynamicboneeditor", 1, "AccessoryDynamicBoneData"],
+        ["com.deathweasel.bepinex.hairaccessorycustomizer", 1, "HairAccessories"],
+        ["com.deathweasel.bepinex.materialeditor", 1, "MaterialColorPropertyList"],
+        ["com.deathweasel.bepinex.materialeditor", 1, "MaterialFloatPropertyList"],
+        ["com.deathweasel.bepinex.materialeditor", 1, "MaterialShaderList"],
+        ["com.deathweasel.bepinex.materialeditor", 1, "MaterialTexturePropertyList"],
+        ["com.deathweasel.bepinex.materialeditor", 1, "RendererPropertyList"],
+        ["com.deathweasel.bepinex.materialeditor", 1, "TextureDictionary"],
+        ["com.deathweasel.bepinex.pushup", 1, "Pushup_BodyData"],
+        ["com.deathweasel.bepinex.pushup", 1, "Pushup_BraData"],
+        ["com.deathweasel.bepinex.pushup", 1, "Pushup_TopData"],
+        ["com.jim60105.kk.charaoverlaysbasedoncoordinate", 1, "IrisDisplaySideList"],
+        # ["com.snw.bepinex.breastphysicscontroller", 1, "DynamicBoneParameter"], # ExtType 99
+        ["madevil.kk.ass", 1, "CharaTriggerInfo"],
+        ["madevil.kk.ass", 1, "CharaVirtualGroupInfo"],
+        ["madevil.kk.ass", 1, "CharaVirtualGroupNames"],
+        ["madevil.kk.ass", 1, "TriggerGroupList"],
+        ["madevil.kk.ass", 1, "TriggerPropertyList"],
+        ["madevil.kk.ca", 1, "AAAPKExtdata"],
+        ["madevil.kk.ca", 1, "AccStateSyncExtdata"],
+        ["madevil.kk.ca", 1, "DynamicBoneEditorExtdata"],
+        ["madevil.kk.ca", 1, "HairAccessoryCustomizerExtdata"],
+        ["madevil.kk.ca", 1, "MaterialEditorExtdata"],
+        ["madevil.kk.ca", 1, "MoreAccessoriesExtdata"],
+        ["madevil.kk.ca", 1, "ResolutionInfoExtdata"],
+        ["madevil.kk.ca", 1, "TextureContainer"],
+        # ["marco.authordata", 1, "Authors"], # ExtType 99
+        ["orange.spork.advikplugin", 1, "ResizeChainAdjustments"],
+    ]
+
+    def __init__(self, data, version, unpack_nested_kkex=False):
         super().__init__(name="KKEx", data=data, version=version)
+        for keys in self.NESTED_KEYS:
+            if self._exists_path(self.data, keys):
+                k1, k2, k3 = keys
+                self.data[k1][k2][k3] = msg_unpack(self.data[k1][k2][k3])
 
     def serialize(self):
-        data, _ = msg_pack_kkex(self.data)
+        self.data_ = copy.deepcopy(self.data)
+        for keys in self.NESTED_KEYS:
+            if self._exists_path(self.data_, keys):
+                k1, k2, k3 = keys
+                self.data_[k1][k2][k3], _ = msg_pack(self.data[k1][k2][k3])
+        data, _ = msg_pack_kkex(self.data_)
         return data, self.name, self.version
+
+    def _exists_path(self, obj, path):
+        current = obj
+        for key in path:
+            try:
+                current = current[key]
+            except (KeyError, IndexError, TypeError):
+                return False
+        if current is None:
+            return False
+        return True
 
 
 class UnknownBlockData(BlockData):

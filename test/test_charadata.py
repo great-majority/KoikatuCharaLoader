@@ -101,14 +101,12 @@ def test_save_modding_character():
     assert raw_data == bytes(kc2)
 
 
-@pytest.mark.parametrize("chara_path", [
-    str(p) for p in Path("./data/testing-data").glob("*.png")
-])
+@pytest.mark.parametrize("chara_path", [str(p) for p in Path("./data/testing-data").glob("*.png")])
 def test_save_modding_character_param(chara_path, request):
     if not request.config.getoption("--run-optional"):
         pytest.skip("requires `--run-optional` to run")
 
-    print("="*20)
+    print("=" * 20)
     print(f"Testing {chara_path}")
     with open(chara_path, "rb") as f:
         raw_data = f.read()
@@ -123,30 +121,10 @@ def test_save_modding_character_param(chara_path, request):
         assert bytes(kc) == bytes(kc2)
         assert raw_data == bytes(kc)
         assert raw_data == bytes(kc2)
-        if "KKEx" in kc.blockdata:
-            find_bytes_values(kc["KKEx"].data)
+
     finally:
         tmpfile.close()
         os.unlink(tmpfile.name)
-
-def find_bytes_values(data, path=None):
-    """
-    ネストされた構造から bytes 型の値を探し、そこに至るまでのキー・インデックスのパスを表示する。
-    """
-    if path is None:
-        path = []
-
-    if isinstance(data, dict):
-        for key, value in data.items():
-            new_path = path + [key]
-            if isinstance(value, bytes):
-                print(new_path)
-            find_bytes_values(value, new_path)
-
-    elif isinstance(data, list):
-        for index, item in enumerate(data):
-            new_path = path + [index]
-            find_bytes_values(item, new_path)
 
 
 def test_save_emocre_character():

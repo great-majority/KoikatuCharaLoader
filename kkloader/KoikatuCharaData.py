@@ -8,6 +8,9 @@ import struct
 
 from kkloader.funcs import get_png, load_length, load_type, msg_pack, msg_pack_kkex, msg_unpack
 
+import lz4.block
+import msgpack
+
 
 def bin_to_str(serial):
     if isinstance(serial, io.BufferedRandom) or isinstance(serial, bytes):
@@ -352,6 +355,12 @@ class KKEx(BlockData):
         ["marco.authordata", 1, "Authors"], # ExtType 99
         ["orange.spork.advikplugin", 1, "ResizeChainAdjustments"],
     ]
+    LZ4_UNPACK = False
+    LZ4_COMPRESSED_KEYS = [
+        ["KKABMPlugin.ABMData", 1, "boneData"],
+        ["com.deathweasel.bepinex.breastphysicscontroller", 1, "DynamicBoneParameter"],
+        ["marco.authordata", 1, "Authors"],
+    ]
 
     def __init__(self, data, version, unpack_nested_kkex=False):
         super().__init__(name="KKEx", data=data, version=version)
@@ -361,6 +370,22 @@ class KKEx(BlockData):
                     k1, k2, k3 = keys
                     self.data[k1][k2][k3] = msg_unpack(self.data[k1][k2][k3])
 
+                    # Check if the data is an ExtType with code 99.
+                    # This format is used for LZ4 compressed data.
+                    if (
+                        self.LZ4_UNPACK
+                        and isinstance(self.data[k1][k2][k3], msgpack.ExtType) 
+                        and self.data[k1][k2][k3].code == 99 
+                        and keys in self.LZ4_COMPRESSED_KEYS
+                    ):
+                        data = self.data[k1][k2][k3].data
+
+                        uncompressed_length = msg_unpack(data[:5])
+                        lz4_data = lz4.block.decompress(data[5:], uncompressed_size=uncompressed_length)
+                        decompressed = msg_unpack(lz4_data)
+
+                        self.data[k1][k2][k3] = decompressed
+
     def serialize(self):
         data = copy.deepcopy(self.data)
         if self.NESTED_UNPACK:
@@ -369,6 +394,13 @@ class KKEx(BlockData):
                     k1, k2, k3 = keys
                     data[k1][k2][k3], msg_length = msg_pack(data[k1][k2][k3])
 
+                    if self.LZ4_UNPACK and keys in self.LZ4_COMPRESSED_KEYS and msg_length > 64:
+                        # By default, data of 64 bytes or less will not be compressed.
+                        # ref: https://github.com/MessagePack-CSharp/MessagePack-CSharp/blob/e9ba7483fe45b4b1d133d6c3a0bf0529e212522f/src/MessagePack/MessagePackSerializerOptions.cs#L86-L94
+                        compressed_data = lz4.block.compress(data[k1][k2][k3], store_size=False, mode='fast', acceleration=1)
+                        compressed_data = b"\xd2" + struct.pack(">i", msg_length) + compressed_data
+                        data[k1][k2][k3], _ = msg_pack(msgpack.ExtType(99, compressed_data))
+                    
                     # ext8 or ext16
                     if data[k1][k2][k3][0] == 0xC7 or data[k1][k2][k3][0] == 0xC8:
                         data[k1][k2][k3] = self._to_ext32(data[k1][k2][k3])

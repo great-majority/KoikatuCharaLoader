@@ -52,16 +52,6 @@ def msg_pack(data):
 
 class KKExPacker(PurePacker):
     KEYS_TO_OVERRIDE = {
-        "CurrentCrest",
-        "BreathingBPM",
-        "ResizeCentroid",
-        "clothingOffsetVersion",
-        "InmonLevel",
-        "SemenVolume",
-        "ReferralIndex",
-        "MenstruationSchedule",
-        "EnableBulge",
-        "AllCharaOverlayTable",
         0,
         1,
         2,
@@ -69,8 +59,18 @@ class KKExPacker(PurePacker):
         4,
         5,
         6,
+        "AllCharaOverlayTable",
+        "BreathingBPM",
+        "CurrentCrest",
+        "EnableBulge",
+        "InmonLevel",
         "LeaveSchoolWeek",
+        "MenstruationSchedule",
+        "ReferralIndex",
+        "ResizeCentroid",
         "ReturnToSchoolWeek",
+        "SemenVolume",
+        "clothingOffsetVersion",
     }
 
     def _pack_map_pairs(self, n, pairs, nest_limit):

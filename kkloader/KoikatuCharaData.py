@@ -313,11 +313,12 @@ class About(BlockData):
 
 
 class KKEx(BlockData):
+    NESTED_UNPACK = True
     NESTED_KEYS = [
         ["Additional_Card_Info", 1, "CardInfo"],
         ["Additional_Card_Info", 1, "CoordinateInfo"],
         ["KCOX", 1, "Overlays"],
-        # ["KKABMPlugin.ABMData", 1, "boneData"], # ExtType 99
+        ["KKABMPlugin.ABMData", 1, "boneData"], # ExtType 99
         ["KSOX", 1, "Lookup"],
         ["MigrationHelper", 1, "Info"],
         ["com.deathweasel.bepinex.clothingunlocker", 1, "ClothingUnlocked"],
@@ -333,7 +334,7 @@ class KKEx(BlockData):
         ["com.deathweasel.bepinex.pushup", 1, "Pushup_BraData"],
         ["com.deathweasel.bepinex.pushup", 1, "Pushup_TopData"],
         ["com.jim60105.kk.charaoverlaysbasedoncoordinate", 1, "IrisDisplaySideList"],
-        # ["com.snw.bepinex.breastphysicscontroller", 1, "DynamicBoneParameter"], # ExtType 99
+        ["com.snw.bepinex.breastphysicscontroller", 1, "DynamicBoneParameter"], # ExtType 99
         ["madevil.kk.ass", 1, "CharaTriggerInfo"],
         ["madevil.kk.ass", 1, "CharaVirtualGroupInfo"],
         ["madevil.kk.ass", 1, "CharaVirtualGroupNames"],
@@ -347,24 +348,31 @@ class KKEx(BlockData):
         ["madevil.kk.ca", 1, "MoreAccessoriesExtdata"],
         ["madevil.kk.ca", 1, "ResolutionInfoExtdata"],
         ["madevil.kk.ca", 1, "TextureContainer"],
-        # ["marco.authordata", 1, "Authors"], # ExtType 99
+        ["marco.authordata", 1, "Authors"], # ExtType 99
         ["orange.spork.advikplugin", 1, "ResizeChainAdjustments"],
     ]
 
     def __init__(self, data, version, unpack_nested_kkex=False):
         super().__init__(name="KKEx", data=data, version=version)
-        for keys in self.NESTED_KEYS:
-            if self._exists_path(self.data, keys):
-                k1, k2, k3 = keys
-                self.data[k1][k2][k3] = msg_unpack(self.data[k1][k2][k3])
+        if self.NESTED_UNPACK:
+            for keys in self.NESTED_KEYS:
+                if self._exists_path(self.data, keys):
+                    k1, k2, k3 = keys
+                    self.data[k1][k2][k3] = msg_unpack(self.data[k1][k2][k3])
 
     def serialize(self):
-        self.data_ = copy.deepcopy(self.data)
-        for keys in self.NESTED_KEYS:
-            if self._exists_path(self.data_, keys):
-                k1, k2, k3 = keys
-                self.data_[k1][k2][k3], _ = msg_pack(self.data[k1][k2][k3])
-        data, _ = msg_pack_kkex(self.data_)
+        data = copy.deepcopy(self.data)
+        if self.NESTED_UNPACK:
+            for keys in self.NESTED_KEYS:
+                if self._exists_path(data, keys):
+                    k1, k2, k3 = keys
+                    data[k1][k2][k3], msg_length = msg_pack(data[k1][k2][k3])
+
+                    # ext8 or ext16
+                    if data[k1][k2][k3][0] == 0xC7 or data[k1][k2][k3][0] == 0xC8:
+                        data[k1][k2][k3] = self._to_ext32(data[k1][k2][k3])
+
+        data, _ = msg_pack_kkex(data)
         return data, self.name, self.version
 
     def _exists_path(self, obj, path):
@@ -377,6 +385,28 @@ class KKEx(BlockData):
         if current is None:
             return False
         return True
+
+    def _to_ext32(self, buf):
+        
+        tag = buf[0]
+        # ext8
+        if tag == 0xC7:
+            # buf = [0xC7][len:1][type:1][data...]
+            length = buf[1]
+            typ    = buf[2]
+            data   = buf[3:]
+        # ext16
+        elif tag == 0xC8:
+            # buf = [0xC8][len:2][type:1][data...]
+            length = struct.unpack(">H", buf[1:3])[0]
+            typ    = buf[3]
+            data   = buf[4:]
+        else:
+            return buf
+
+        # ext32 header: 0xC9 + 4‑byte BE length + 1‑byte type
+        new_header = b'\xC9' + struct.pack(">I", length) + bytes((typ,))
+        return new_header + data
 
 
 class UnknownBlockData(BlockData):

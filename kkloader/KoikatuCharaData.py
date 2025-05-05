@@ -315,6 +315,7 @@ class About(BlockData):
 class KKEx(BlockData):
     NESTED_UNPACK = True
     NESTED_KEYS = [
+        ["Accessory_States", 1, "CoordinateData"],
         ["Additional_Card_Info", 1, "CardInfo"],
         ["Additional_Card_Info", 1, "CoordinateInfo"],
         ["KCOX", 1, "Overlays"],

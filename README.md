@@ -97,6 +97,12 @@ This is useful for identifying which variables exist.
     ...
 ```
 
+### KKEx Nested MessagePack Handling
+
+The `KKEx` in `blockdata` sometimes contains fields encoded as raw `bytes` that are themselves MessagePack payloads.  
+kkloader automatically deserializes and reserializes such fields for known plugins listed in `KKEx.NESTED_KEYS`.
+
+
 # Export to JSON file
 ```
 from kkloader import KoikatuCharaData

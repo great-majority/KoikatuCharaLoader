@@ -1,4 +1,6 @@
+import os
 import tempfile
+from pathlib import Path
 
 from kkloader import (
     EmocreCharaData,
@@ -6,6 +8,8 @@ from kkloader import (
     KoikatuCharaData,
     SummerVacationCharaData,
 )
+
+import pytest
 
 
 def test_load_character():
@@ -95,6 +99,32 @@ def test_save_modding_character():
     assert bytes(kc) == bytes(kc2)
     assert raw_data == bytes(kc)
     assert raw_data == bytes(kc2)
+
+
+@pytest.mark.parametrize("chara_path", [str(p) for p in Path("./data/testing-data").glob("*.png")])
+def test_save_modding_character_param(chara_path, request):
+    if not request.config.getoption("--run-optional"):
+        pytest.skip("requires `--run-optional` to run")
+
+    print("=" * 20)
+    print(f"Testing {chara_path}")
+    with open(chara_path, "rb") as f:
+        raw_data = f.read()
+
+    tmpfile = tempfile.NamedTemporaryFile(delete=False)
+    try:
+        kc = KoikatuCharaData.load(chara_path)
+        kc.save(tmpfile.name)
+        kc2 = KoikatuCharaData.load(tmpfile.name)
+
+        assert kc["Parameter"]["nickname"] == kc2["Parameter"]["nickname"]
+        assert bytes(kc) == bytes(kc2)
+        assert raw_data == bytes(kc)
+        assert raw_data == bytes(kc2)
+
+    finally:
+        tmpfile.close()
+        os.unlink(tmpfile.name)
 
 
 def test_save_emocre_character():

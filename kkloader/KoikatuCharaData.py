@@ -1,11 +1,15 @@
 # -*- coding:utf-8 -*-
 
 import base64
+import copy
 import io
 import json
 import struct
 
 from kkloader.funcs import get_png, load_length, load_type, msg_pack, msg_pack_kkex, msg_unpack
+
+import lz4.block
+import msgpack
 
 
 def bin_to_str(serial):
@@ -312,12 +316,130 @@ class About(BlockData):
 
 
 class KKEx(BlockData):
-    def __init__(self, data, version):
+    NESTED_UNPACK = True
+    NESTED_KEYS = [
+        ["Accessory_States", 1, "CoordinateData"],
+        ["Additional_Card_Info", 1, "CardInfo"],
+        ["Additional_Card_Info", 1, "CoordinateInfo"],
+        ["KCOX", 1, "Overlays"],
+        ["KKABMPlugin.ABMData", 1, "boneData"], # ExtType 99
+        ["KSOX", 1, "Lookup"],
+        ["MigrationHelper", 1, "Info"],
+        ["com.deathweasel.bepinex.clothingunlocker", 1, "ClothingUnlocked"],
+        ["com.deathweasel.bepinex.dynamicboneeditor", 1, "AccessoryDynamicBoneData"],
+        ["com.deathweasel.bepinex.hairaccessorycustomizer", 1, "HairAccessories"],
+        ["com.deathweasel.bepinex.materialeditor", 1, "MaterialColorPropertyList"],
+        ["com.deathweasel.bepinex.materialeditor", 1, "MaterialFloatPropertyList"],
+        ["com.deathweasel.bepinex.materialeditor", 1, "MaterialShaderList"],
+        ["com.deathweasel.bepinex.materialeditor", 1, "MaterialTexturePropertyList"],
+        ["com.deathweasel.bepinex.materialeditor", 1, "RendererPropertyList"],
+        ["com.deathweasel.bepinex.materialeditor", 1, "TextureDictionary"],
+        ["com.deathweasel.bepinex.pushup", 1, "Pushup_BodyData"],
+        ["com.deathweasel.bepinex.pushup", 1, "Pushup_BraData"],
+        ["com.deathweasel.bepinex.pushup", 1, "Pushup_TopData"],
+        ["com.jim60105.kk.charaoverlaysbasedoncoordinate", 1, "IrisDisplaySideList"],
+        ["com.snw.bepinex.breastphysicscontroller", 1, "DynamicBoneParameter"], # ExtType 99
+        ["madevil.kk.ass", 1, "CharaTriggerInfo"],
+        ["madevil.kk.ass", 1, "CharaVirtualGroupInfo"],
+        ["madevil.kk.ass", 1, "CharaVirtualGroupNames"],
+        ["madevil.kk.ass", 1, "TriggerGroupList"],
+        ["madevil.kk.ass", 1, "TriggerPropertyList"],
+        ["madevil.kk.ca", 1, "AAAPKExtdata"],
+        ["madevil.kk.ca", 1, "AccStateSyncExtdata"],
+        ["madevil.kk.ca", 1, "DynamicBoneEditorExtdata"],
+        ["madevil.kk.ca", 1, "HairAccessoryCustomizerExtdata"],
+        ["madevil.kk.ca", 1, "MaterialEditorExtdata"],
+        ["madevil.kk.ca", 1, "MoreAccessoriesExtdata"],
+        ["madevil.kk.ca", 1, "ResolutionInfoExtdata"],
+        ["madevil.kk.ca", 1, "TextureContainer"],
+        ["marco.authordata", 1, "Authors"], # ExtType 99
+        ["orange.spork.advikplugin", 1, "ResizeChainAdjustments"],
+    ]
+    LZ4_UNPACK = False
+    LZ4_COMPRESSED_KEYS = [
+        ["KKABMPlugin.ABMData", 1, "boneData"],
+        ["com.deathweasel.bepinex.breastphysicscontroller", 1, "DynamicBoneParameter"],
+        ["marco.authordata", 1, "Authors"],
+    ]
+
+    def __init__(self, data, version, unpack_nested_kkex=False):
         super().__init__(name="KKEx", data=data, version=version)
+        if self.NESTED_UNPACK:
+            for keys in self.NESTED_KEYS:
+                if self._exists_path(self.data, keys):
+                    k1, k2, k3 = keys
+                    self.data[k1][k2][k3] = msg_unpack(self.data[k1][k2][k3])
+
+                    # Check if the data is an ExtType with code 99.
+                    # This format is used for LZ4 compressed data.
+                    if (
+                        self.LZ4_UNPACK
+                        and isinstance(self.data[k1][k2][k3], msgpack.ExtType) 
+                        and self.data[k1][k2][k3].code == 99 
+                        and keys in self.LZ4_COMPRESSED_KEYS
+                    ):
+                        data = self.data[k1][k2][k3].data
+
+                        uncompressed_length = msg_unpack(data[:5])
+                        lz4_data = lz4.block.decompress(data[5:], uncompressed_size=uncompressed_length)
+                        decompressed = msg_unpack(lz4_data)
+
+                        self.data[k1][k2][k3] = decompressed
 
     def serialize(self):
-        data, _ = msg_pack_kkex(self.data)
+        data = copy.deepcopy(self.data)
+        if self.NESTED_UNPACK:
+            for keys in self.NESTED_KEYS:
+                if self._exists_path(data, keys):
+                    k1, k2, k3 = keys
+                    data[k1][k2][k3], msg_length = msg_pack(data[k1][k2][k3])
+
+                    if self.LZ4_UNPACK and keys in self.LZ4_COMPRESSED_KEYS and msg_length > 64:
+                        # By default, data of 64 bytes or less will not be compressed.
+                        # ref: https://github.com/MessagePack-CSharp/MessagePack-CSharp/blob/e9ba7483fe45b4b1d133d6c3a0bf0529e212522f/src/MessagePack/MessagePackSerializerOptions.cs#L86-L94
+                        compressed_data = lz4.block.compress(data[k1][k2][k3], store_size=False, mode='fast', acceleration=1)
+                        compressed_data = b"\xd2" + struct.pack(">i", msg_length) + compressed_data
+                        data[k1][k2][k3], _ = msg_pack(msgpack.ExtType(99, compressed_data))
+                    
+                    # ext8 or ext16
+                    if data[k1][k2][k3][0] == 0xC7 or data[k1][k2][k3][0] == 0xC8:
+                        data[k1][k2][k3] = self._to_ext32(data[k1][k2][k3])
+
+        data, _ = msg_pack_kkex(data)
         return data, self.name, self.version
+
+    def _exists_path(self, obj, path):
+        current = obj
+        for key in path:
+            try:
+                current = current[key]
+            except (KeyError, IndexError, TypeError):
+                return False
+        if current is None:
+            return False
+        return True
+
+    def _to_ext32(self, buf):
+        
+        tag = buf[0]
+        # ext8
+        if tag == 0xC7:
+            # buf = [0xC7][len:1][type:1][data...]
+            length = buf[1]
+            typ    = buf[2]
+            data   = buf[3:]
+        # ext16
+        elif tag == 0xC8:
+            # buf = [0xC8][len:2][type:1][data...]
+            length = struct.unpack(">H", buf[1:3])[0]
+            typ    = buf[3]
+            data   = buf[4:]
+        else:
+            return buf
+
+        # ext32 header: 0xC9 + 4‑byte BE length + 1‑byte type
+        new_header = b'\xC9' + struct.pack(">I", length) + bytes((typ,))
+        return new_header + data
 
 
 class UnknownBlockData(BlockData):

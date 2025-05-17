@@ -3,7 +3,7 @@ A simple deserializer and serializer for character data from Koikatu, EmotionCre
 
 [![](https://img.shields.io/pypi/v/kkloader)](https://pypi.org/project/kkloader/)
 [![Downloads](https://static.pepy.tech/badge/kkloader)](https://pepy.tech/project/kkloader)
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/great-majority/KoikatuCharaLoader/blob/main/notebooks/sandbox.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/great-majority/KoikatuCharaLoader/blob/master/notebooks/sandbox.ipynb)
 
 [日本語マニュアルがここにあります](README.ja.md)
 

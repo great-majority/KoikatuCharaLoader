@@ -3,6 +3,7 @@ A simple deserializer and serializer for character data from Koikatu, EmotionCre
 
 [![](https://img.shields.io/pypi/v/kkloader)](https://pypi.org/project/kkloader/)
 [![Downloads](https://static.pepy.tech/badge/kkloader)](https://pepy.tech/project/kkloader)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/great-majority/KoikatuCharaLoader/blob/main/notebooks/sandbox.ipynb)
 
 [日本語マニュアルがここにあります](README.ja.md)
 
@@ -15,6 +16,8 @@ If this doesn't work, try the following command (this may be for Windows users).
 ```
 $ python -m pip install kkloader
 ```
+
+If you just want to quickly try out this module, you can click the "Open In Colab" button above to run it directly on Colab.
 
 # Basic Usage
 ```python

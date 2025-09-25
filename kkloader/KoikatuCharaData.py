@@ -322,7 +322,7 @@ class KKEx(BlockData):
         ["Additional_Card_Info", 1, "CardInfo"],
         ["Additional_Card_Info", 1, "CoordinateInfo"],
         ["KCOX", 1, "Overlays"],
-        ["KKABMPlugin.ABMData", 1, "boneData"], # ExtType 99
+        ["KKABMPlugin.ABMData", 1, "boneData"],  # ExtType 99
         ["KSOX", 1, "Lookup"],
         ["MigrationHelper", 1, "Info"],
         ["com.deathweasel.bepinex.clothingunlocker", 1, "ClothingUnlocked"],
@@ -338,7 +338,7 @@ class KKEx(BlockData):
         ["com.deathweasel.bepinex.pushup", 1, "Pushup_BraData"],
         ["com.deathweasel.bepinex.pushup", 1, "Pushup_TopData"],
         ["com.jim60105.kk.charaoverlaysbasedoncoordinate", 1, "IrisDisplaySideList"],
-        ["com.snw.bepinex.breastphysicscontroller", 1, "DynamicBoneParameter"], # ExtType 99
+        ["com.snw.bepinex.breastphysicscontroller", 1, "DynamicBoneParameter"],  # ExtType 99
         ["madevil.kk.ass", 1, "CharaTriggerInfo"],
         ["madevil.kk.ass", 1, "CharaVirtualGroupInfo"],
         ["madevil.kk.ass", 1, "CharaVirtualGroupNames"],
@@ -352,7 +352,7 @@ class KKEx(BlockData):
         ["madevil.kk.ca", 1, "MoreAccessoriesExtdata"],
         ["madevil.kk.ca", 1, "ResolutionInfoExtdata"],
         ["madevil.kk.ca", 1, "TextureContainer"],
-        ["marco.authordata", 1, "Authors"], # ExtType 99
+        ["marco.authordata", 1, "Authors"],  # ExtType 99
         ["orange.spork.advikplugin", 1, "ResizeChainAdjustments"],
     ]
     LZ4_UNPACK = False
@@ -372,12 +372,7 @@ class KKEx(BlockData):
 
                     # Check if the data is an ExtType with code 99.
                     # This format is used for LZ4 compressed data.
-                    if (
-                        self.LZ4_UNPACK
-                        and isinstance(self.data[k1][k2][k3], msgpack.ExtType) 
-                        and self.data[k1][k2][k3].code == 99 
-                        and keys in self.LZ4_COMPRESSED_KEYS
-                    ):
+                    if self.LZ4_UNPACK and isinstance(self.data[k1][k2][k3], msgpack.ExtType) and self.data[k1][k2][k3].code == 99 and keys in self.LZ4_COMPRESSED_KEYS:
                         data = self.data[k1][k2][k3].data
 
                         uncompressed_length = msg_unpack(data[:5])
@@ -397,10 +392,10 @@ class KKEx(BlockData):
                     if self.LZ4_UNPACK and keys in self.LZ4_COMPRESSED_KEYS and msg_length > 64:
                         # By default, data of 64 bytes or less will not be compressed.
                         # ref: https://github.com/MessagePack-CSharp/MessagePack-CSharp/blob/e9ba7483fe45b4b1d133d6c3a0bf0529e212522f/src/MessagePack/MessagePackSerializerOptions.cs#L86-L94
-                        compressed_data = lz4.block.compress(data[k1][k2][k3], store_size=False, mode='fast', acceleration=1)
+                        compressed_data = lz4.block.compress(data[k1][k2][k3], store_size=False, mode="fast", acceleration=1)
                         compressed_data = b"\xd2" + struct.pack(">i", msg_length) + compressed_data
                         data[k1][k2][k3], _ = msg_pack(msgpack.ExtType(99, compressed_data))
-                    
+
                     # ext8 or ext16
                     if data[k1][k2][k3][0] == 0xC7 or data[k1][k2][k3][0] == 0xC8:
                         data[k1][k2][k3] = self._to_ext32(data[k1][k2][k3])
@@ -420,25 +415,24 @@ class KKEx(BlockData):
         return True
 
     def _to_ext32(self, buf):
-        
         tag = buf[0]
         # ext8
         if tag == 0xC7:
             # buf = [0xC7][len:1][type:1][data...]
             length = buf[1]
-            typ    = buf[2]
-            data   = buf[3:]
+            typ = buf[2]
+            data = buf[3:]
         # ext16
         elif tag == 0xC8:
             # buf = [0xC8][len:2][type:1][data...]
             length = struct.unpack(">H", buf[1:3])[0]
-            typ    = buf[3]
-            data   = buf[4:]
+            typ = buf[3]
+            data = buf[4:]
         else:
             return buf
 
         # ext32 header: 0xC9 + 4‑byte BE length + 1‑byte type
-        new_header = b'\xC9' + struct.pack(">I", length) + bytes((typ,))
+        new_header = b"\xc9" + struct.pack(">I", length) + bytes((typ,))
         return new_header + data
 
 

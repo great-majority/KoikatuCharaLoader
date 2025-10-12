@@ -211,11 +211,14 @@ class BlockData:
     def __delitem__(self, key):
         del self.data[key]
 
+    def __repr__(self):
+        return self.__str__()
+
     def prettify(self):
         print(self.__str__())
 
     def __str__(self):
-        return json.dumps(self.jsonalizable(), indent=2, default=bin_to_str)
+        return json.dumps(self.jsonalizable(), indent=2, ensure_ascii=False, default=bin_to_str)
 
 
 class Custom(BlockData):

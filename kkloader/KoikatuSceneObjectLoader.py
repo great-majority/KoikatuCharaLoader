@@ -86,13 +86,8 @@ class KoikatuSceneObjectLoader:
         # This corresponds to ChaFileControl.LoadCharaFile in C#
         # C# calls with noLoadPng: true, so contains_png=False
         try:
-            # Debug: Check stream position before loading
-            stream_pos_before = data_stream.tell()
-
             chara_data = KoikatuCharaData.load(data_stream, contains_png=False)
             data["character"] = chara_data
-
-            stream_pos_after = data_stream.tell()
         except Exception as e:
             stream_pos_error = data_stream.tell()
             print(f"Warning: Error reading character file data at position {stream_pos_error}: {type(e).__name__}: {str(e)}")
@@ -385,7 +380,8 @@ class KoikatuSceneObjectLoader:
         """
         data = {}
 
-        # Load ObjectInfo base data
+        # Load ObjectInfo base data (base.Load in C#)
+        data["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
         data["position"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
         data["rotation"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
         data["scale"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
@@ -466,7 +462,8 @@ class KoikatuSceneObjectLoader:
         """
         data = {}
 
-        # Load ObjectInfo base data
+        # Load ObjectInfo base data (base.Load in C#)
+        data["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
         data["position"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
         data["rotation"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
         data["scale"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
@@ -512,7 +509,8 @@ class KoikatuSceneObjectLoader:
         """
         data = {}
 
-        # Load ObjectInfo base data
+        # Load ObjectInfo base data (base.Load in C#)
+        data["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
         data["position"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
         data["rotation"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
         data["scale"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
@@ -534,7 +532,8 @@ class KoikatuSceneObjectLoader:
         """
         data = {}
 
-        # Load ObjectInfo base data
+        # Load ObjectInfo base data (base.Load in C#)
+        data["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
         data["position"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
         data["rotation"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
         data["scale"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
@@ -658,7 +657,6 @@ class KoikatuSceneObjectLoader:
 
         # Save ObjectInfo base data
         KoikatuSceneObjectLoader.save_object_info_base(data_stream, data)
-        data_stream.write(struct.pack("i", 0))
 
         # Write group, category, no
         data_stream.write(struct.pack("i", data["group"]))
@@ -733,6 +731,9 @@ class KoikatuSceneObjectLoader:
     def save_object_info_base(data_stream: BinaryIO, data: Dict[str, Any]) -> None:
         """Save ObjectInfo base data (ObjectInfo.Save)"""
         # Save dicKey, changeAmount (position, rotation, scale), treeState, visible
+
+        # Write dicKey (int)
+        data_stream.write(struct.pack("i", data.get("dicKey", 0)))
 
         # Write position (Vector3)
         pos = data.get("position", {"x": 0.0, "y": 0.0, "z": 0.0})

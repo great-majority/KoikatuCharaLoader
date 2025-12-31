@@ -78,7 +78,7 @@ class KoikatuSceneData:
         self.frame = ""
 
     @classmethod
-    def load(cls, filelike: Union[str, bytes, io.BytesIO], safe_mode: bool = True) -> "KoikatuSceneData":
+    def load(cls, filelike: Union[str, bytes, io.BytesIO]) -> "KoikatuSceneData":
         """
         Load Koikatu scene data from a file or bytes.
 

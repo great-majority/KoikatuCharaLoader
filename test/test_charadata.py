@@ -3,6 +3,7 @@ import tempfile
 from pathlib import Path
 
 from kkloader import (
+    AicomiCharaData,
     EmocreCharaData,
     HoneycomeCharaData,
     KoikatuCharaData,
@@ -62,6 +63,12 @@ def test_load_summervacation_character():
     svc = SummerVacationCharaData.load("./data/sv_chara.png")
     for b in svc.blockdata:
         assert b in svc.modules.keys()
+
+
+def test_load_aicomi_character():
+    ac = AicomiCharaData.load("./data/ac_chara.png")
+    for b in ac.blockdata:
+        assert b in ac.modules.keys()
 
 
 def test_save_character():
@@ -178,6 +185,19 @@ def test_save_summervacation_character():
     assert bytes(svc) == bytes(svc2)
 
 
+def test_save_aicomi_character():
+    with open("./data/ac_chara.png", "rb") as f:
+        raw_data = f.read()
+    tmpfile = tempfile.NamedTemporaryFile()
+    ac = AicomiCharaData.load("./data/ac_chara.png")
+    ac.save(tmpfile.name)
+    ac2 = AicomiCharaData.load(tmpfile.name)
+    assert ac["Parameter"]["lastname"] == ac2["Parameter"]["lastname"]
+    assert ac["Parameter"]["firstname"] == ac2["Parameter"]["firstname"]
+    assert raw_data == bytes(ac)
+    assert bytes(ac) == bytes(ac2)
+
+
 def test_json_character():
     kc = KoikatuCharaData.load("./data/kk_chara.png")
     tmpfile = tempfile.NamedTemporaryFile()
@@ -212,3 +232,9 @@ def test_json_summervacation():
     hc = SummerVacationCharaData.load("./data/sv_chara.png")
     tmpfile = tempfile.NamedTemporaryFile()
     hc.save_json(tmpfile.name)
+
+
+def test_json_aicomi():
+    ac = AicomiCharaData.load("./data/ac_chara.png")
+    tmpfile = tempfile.NamedTemporaryFile()
+    ac.save_json(tmpfile.name)

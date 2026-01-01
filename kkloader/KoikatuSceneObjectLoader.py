@@ -2,7 +2,7 @@
 
 import json
 import struct
-from typing import Dict, Any, BinaryIO
+from typing import Any, BinaryIO, Dict
 
 from kkloader.funcs import load_length, load_string, write_string
 from kkloader.KoikatuCharaData import KoikatuCharaData
@@ -12,6 +12,75 @@ class KoikatuSceneObjectLoader:
     """
     Class for loading Koikatu scene object data.
     This is a Python implementation of the Studio.ObjectInfo.Load functions in C#.
+    """
+
+    # ============================================================
+    # 1. DISPATCH TABLES & CONFIGURATION
+    # ============================================================
+    """
+    Object type dispatching system.
+
+    Maps object type IDs to their respective load/save handler methods.
+    Supported object types:
+      0: Character (OICharInfo)
+      1: Item (OIItemInfo)
+      2: Light (OILightInfo)
+      3: Folder (OIFolderInfo)
+      4: Route (OIRouteInfo)
+      5: Camera (OICameraInfo)
+      7: Text (OITextInfo)
+    """
+
+    # Object type dispatch tables
+    _LOAD_DISPATCH = {
+        0: "load_char_info",
+        1: "load_item_info",
+        2: "load_light_info",
+        3: "load_folder_info",
+        4: "load_route_info",
+        5: "load_camera_info",
+        7: "load_text_info",
+    }
+
+    _SAVE_DISPATCH = {
+        0: "save_char_info",
+        1: "save_item_info",
+        2: "save_light_info",
+        3: "save_folder_info",
+        4: "save_route_info",
+        5: "save_camera_info",
+        7: "save_text_info",
+    }
+
+    @staticmethod
+    def _dispatch_load(data_stream: BinaryIO, obj_type: int, obj_info: Dict[str, Any], version: str = None) -> None:
+        """Dispatch to appropriate load method based on object type"""
+        method_name = KoikatuSceneObjectLoader._LOAD_DISPATCH.get(obj_type)
+        if method_name is None:
+            print(f"Warning: Unknown object type {obj_type}")
+            return
+        method = getattr(KoikatuSceneObjectLoader, method_name)
+        method(data_stream, obj_info, version)
+
+    @staticmethod
+    def _dispatch_save(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+        """Dispatch to appropriate save method based on object type"""
+        obj_type = obj_info.get("type", -1)
+        method_name = KoikatuSceneObjectLoader._SAVE_DISPATCH.get(obj_type)
+        if method_name is None:
+            raise ValueError(f"Unknown object type: {obj_type}")
+        method = getattr(KoikatuSceneObjectLoader, method_name)
+        method(data_stream, obj_info, version)
+
+    # ============================================================
+    # 2. PRIMITIVE TYPE HELPERS
+    # ============================================================
+    """
+    Low-level data structure helpers for binary serialization.
+
+    These methods handle the most basic data types used throughout
+    the scene file format: Vector3, Color (RGBA/JSON), and boolean arrays.
+    All methods are private as they're only used internally by higher-level loaders/savers.
     """
 
     @staticmethod
@@ -32,52 +101,322 @@ class KoikatuSceneObjectLoader:
         return {"r": struct.unpack("f", data_stream.read(4))[0], "g": struct.unpack("f", data_stream.read(4))[0], "b": struct.unpack("f", data_stream.read(4))[0], "a": struct.unpack("f", data_stream.read(4))[0]}
 
     @staticmethod
+    def _save_color_rgba(data_stream: BinaryIO, color: Dict[str, float]) -> None:
+        """Save Color (r, g, b, a) as 4 floats"""
+        data_stream.write(struct.pack("f", color.get("r", 1.0)))
+        data_stream.write(struct.pack("f", color.get("g", 1.0)))
+        data_stream.write(struct.pack("f", color.get("b", 1.0)))
+        data_stream.write(struct.pack("f", color.get("a", 1.0)))
+
+    @staticmethod
+    def parse_color_json(json_str: str) -> Dict[str, float]:
+        """Parse color from JSON string"""
+        # JSONとして解析
+        color_data = json.loads(json_str)
+        return {"r": color_data.get("r", 0), "g": color_data.get("g", 0), "b": color_data.get("b", 0), "a": color_data.get("a", 1.0)}
+
+    @staticmethod
+    def _save_color_json(data_stream: BinaryIO, color: Dict[str, float]) -> None:
+        """Save Color as JSON string with length prefix"""
+        color_bytes = json.dumps(color, separators=(",", ":")).encode("utf-8")
+        write_string(data_stream, color_bytes)
+
+    @staticmethod
     def _load_bool_array(data_stream: BinaryIO, count: int) -> list:
         """Load an array of boolean values from the data stream"""
         return [bool(struct.unpack("b", data_stream.read(1))[0]) for _ in range(count)]
 
+    # ============================================================
+    # 3. BASE OBJECT INFO HELPERS
+    # ============================================================
+    """
+    Base object information handlers.
+
+    These methods handle the common data fields that all scene objects share:
+    dicKey, position, rotation, scale, and other basic object properties.
+    Includes specialized handling for light object bases.
+    """
+
     @staticmethod
-    def _compare_versions(version_str: str, target: str) -> int:
+    def _load_object_info_base(data_stream: BinaryIO) -> Dict[str, Any]:
+        """Load ObjectInfo base data (dicKey, position, rotation, scale, treeState, visible)"""
+        return {
+            "dicKey": struct.unpack("i", data_stream.read(4))[0],
+            "position": KoikatuSceneObjectLoader._load_vector3(data_stream),
+            "rotation": KoikatuSceneObjectLoader._load_vector3(data_stream),
+            "scale": KoikatuSceneObjectLoader._load_vector3(data_stream),
+            "treeState": struct.unpack("i", data_stream.read(4))[0],
+            "visible": bool(struct.unpack("b", data_stream.read(1))[0]),
+        }
+
+    @staticmethod
+    def _save_object_info_base(data_stream: BinaryIO, data: Dict[str, Any]) -> None:
+        """Save ObjectInfo base data (ObjectInfo.Save)"""
+        # Save dicKey, changeAmount (position, rotation, scale), treeState, visible
+
+        # Write dicKey (int)
+        data_stream.write(struct.pack("i", data.get("dicKey", 0)))
+
+        # Write position (Vector3)
+        pos = data.get("position", {"x": 0.0, "y": 0.0, "z": 0.0})
+        KoikatuSceneObjectLoader._save_vector3(data_stream, pos, default=0.0)
+
+        # Write rotation (Vector3)
+        rot = data.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0})
+        KoikatuSceneObjectLoader._save_vector3(data_stream, rot, default=0.0)
+
+        # Write scale (Vector3)
+        scale = data.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0})
+        KoikatuSceneObjectLoader._save_vector3(data_stream, scale, default=1.0)
+
+        # Write treeState
+        data_stream.write(struct.pack("i", data.get("treeState", 0)))
+
+        # Write visible
+        data_stream.write(struct.pack("b", int(data.get("visible", True))))
+
+    @staticmethod
+    def _load_light_info_base(data_stream: BinaryIO) -> Dict[str, Any]:
+        """Load base light info (color, intensity, rot, shadow)"""
+        color_json = load_string(data_stream).decode("utf-8")
+        return {
+            "color": KoikatuSceneObjectLoader.parse_color_json(color_json),
+            "intensity": struct.unpack("f", data_stream.read(4))[0],
+            "rot": [struct.unpack("f", data_stream.read(4))[0], struct.unpack("f", data_stream.read(4))[0]],
+            "shadow": bool(struct.unpack("b", data_stream.read(1))[0]),
+        }
+
+    @staticmethod
+    def _save_light_info_base(data_stream: BinaryIO, light_data: Dict[str, Any]) -> None:
+        """Save base light info (color, intensity, rot, shadow)"""
+        color_bytes = json.dumps(light_data["color"], separators=(",", ":")).encode("utf-8")
+        write_string(data_stream, color_bytes)
+        data_stream.write(struct.pack("f", light_data["intensity"]))
+        data_stream.write(struct.pack("f", light_data["rot"][0]))
+        data_stream.write(struct.pack("f", light_data["rot"][1]))
+        data_stream.write(struct.pack("b", int(light_data["shadow"])))
+
+    # ============================================================
+    # 4. COMPONENT DATA HELPERS
+    # ============================================================
+    """
+    Component-level data structure handlers.
+
+    These methods handle complex sub-components that are used by multiple object types:
+    - BoneInfo: FK/IK bone data for characters and items
+    - PatternInfo: Texture pattern data for items
+    - RoutePointInfo: Waypoint data for route objects
+    All methods follow the Load/Save pattern matching their C# counterparts.
+    """
+
+    @staticmethod
+    def load_bone_info(data_stream: BinaryIO) -> Dict[str, Any]:
         """
-        Compare version strings (e.g., "1.0.3.0" vs "1.0.4.0")
-        Returns: -1 if version < target, 0 if equal, 1 if version > target
+        Load bone info data
+        Based on OIBoneInfo.Save/Load in C#
+
+        OIBoneInfo.Save writes: dicKey + changeAmount (3 Vector3)
+        OIBoneInfo.Load calls: base.Load(_other: false) which reads dicKey + changeAmount only
         """
-        if version_str is None:
-            # If no version provided, assume latest
-            return 1
+        bone_data = {}
 
-        version_parts = [int(x) for x in version_str.split(".")]
-        target_parts = [int(x) for x in target.split(".")]
+        # Read dicKey (int)
+        bone_data["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
 
-        # Pad shorter version with zeros
-        while len(version_parts) < len(target_parts):
-            version_parts.append(0)
-        while len(target_parts) < len(version_parts):
-            target_parts.append(0)
+        # Read ChangeAmount (ChangeAmount.Load/Save in C#)
+        # ChangeAmount contains 3 Vector3: position, rotation, scale
+        bone_data["changeAmount"] = {"position": KoikatuSceneObjectLoader._load_vector3(data_stream), "rotation": KoikatuSceneObjectLoader._load_vector3(data_stream), "scale": KoikatuSceneObjectLoader._load_vector3(data_stream)}
 
-        for v, t in zip(version_parts, target_parts):
-            if v < t:
-                return -1
-            elif v > t:
-                return 1
-        return 0
+        return bone_data
+
+    @staticmethod
+    def save_bone_info(data_stream: BinaryIO, bone_data: Dict[str, Any]) -> None:
+        """Save bone info data"""
+        # Based on OIBoneInfo.Save in C#
+        # Write dicKey
+        data_stream.write(struct.pack("i", bone_data.get("dicKey", 0)))
+
+        # Write changeAmount (position, rotation, scale)
+        change_amount = bone_data.get("changeAmount", {})
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("position", {"x": 0.0, "y": 0.0, "z": 0.0}))
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0}))
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0}))
+
+    @staticmethod
+    def load_pattern_info(data_stream: BinaryIO) -> Dict[str, Any]:
+        """Load pattern info data"""
+        # Based on PatternInfo.Load in C#
+        pattern_data = {}
+
+        # Read key
+        pattern_data["key"] = struct.unpack("i", data_stream.read(4))[0]
+
+        # Read filePath using load_string
+        file_path_bytes = load_string(data_stream)
+        pattern_data["file_path"] = file_path_bytes.decode("utf-8")
+
+        # Read clamp
+        pattern_data["clamp"] = bool(struct.unpack("b", data_stream.read(1))[0])
+
+        # Read uv (Vector4)
+        uv_json = load_string(data_stream).decode("utf-8")
+        pattern_data["uv"] = json.loads(uv_json)
+
+        # Read rot
+        pattern_data["rot"] = struct.unpack("f", data_stream.read(4))[0]
+
+        return pattern_data
+
+    @staticmethod
+    def save_pattern_info(data_stream: BinaryIO, pattern_data: Dict[str, Any]) -> None:
+        """Save pattern info data"""
+        # Based on PatternInfo.Save in C#
+
+        # Write key
+        data_stream.write(struct.pack("i", pattern_data["key"]))
+
+        # Write filePath
+        write_string(data_stream, pattern_data["file_path"].encode("utf-8"))
+
+        # Write clamp
+        data_stream.write(struct.pack("b", int(pattern_data["clamp"])))
+
+        # Write uv (Vector4)
+        write_string(data_stream, json.dumps(pattern_data["uv"], separators=(",", ":")).encode("utf-8"))
+
+        # Write rot
+        data_stream.write(struct.pack("f", pattern_data["rot"]))
+
+    @staticmethod
+    def _load_route_point_info(data_stream: BinaryIO, version: str = None) -> Dict[str, Any]:
+        """
+        Load OIRoutePointInfo data with version-specific handling
+        Based on OIRoutePointInfo.Load in C# (lines 50-75)
+        """
+        route_point = {}
+
+        # Read dicKey
+        route_point["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
+
+        # Read ChangeAmount (3 Vector3)
+        route_point["changeAmount"] = {"position": KoikatuSceneObjectLoader._load_vector3(data_stream), "rotation": KoikatuSceneObjectLoader._load_vector3(data_stream), "scale": KoikatuSceneObjectLoader._load_vector3(data_stream)}
+
+        # Read speed
+        route_point["speed"] = struct.unpack("f", data_stream.read(4))[0]
+
+        # Read easeType
+        route_point["easeType"] = struct.unpack("i", data_stream.read(4))[0]
+
+        # Version 1.0.3 only: read and discard a boolean
+        if KoikatuSceneObjectLoader._compare_versions(version, "1.0.3") == 0:
+            data_stream.read(1)  # Discard boolean
+
+        # Version >= 1.0.4.1: connection
+        if KoikatuSceneObjectLoader._compare_versions(version, "1.0.4.1") >= 0:
+            route_point["connection"] = struct.unpack("i", data_stream.read(4))[0]
+
+        # Version >= 1.0.4.1: aidInfo
+        if KoikatuSceneObjectLoader._compare_versions(version, "1.0.4.1") >= 0:
+            route_point["aidInfo"] = KoikatuSceneObjectLoader._load_route_point_aid_info(data_stream)
+
+        # Version >= 1.0.4.2: link
+        if KoikatuSceneObjectLoader._compare_versions(version, "1.0.4.2") >= 0:
+            route_point["link"] = bool(struct.unpack("b", data_stream.read(1))[0])
+
+        return route_point
+
+    @staticmethod
+    def _save_route_point_info(data_stream: BinaryIO, route_point: Dict[str, Any]) -> None:
+        """
+        Save OIRoutePointInfo data
+        Based on OIRoutePointInfo.Save in C#
+        """
+        # Write dicKey
+        data_stream.write(struct.pack("i", route_point.get("dicKey", 0)))
+
+        # Write ChangeAmount (3 Vector3: position, rotation, scale)
+        change_amount = route_point.get("changeAmount", {})
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("position", {"x": 0.0, "y": 0.0, "z": 0.0}))
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0}))
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0}))
+
+        # Write speed
+        data_stream.write(struct.pack("f", route_point.get("speed", 2.0)))
+
+        # Write easeType
+        data_stream.write(struct.pack("i", route_point.get("easeType", 0)))
+
+        # Write connection
+        data_stream.write(struct.pack("i", route_point.get("connection", 0)))
+
+        # Write aidInfo
+        aid_info = route_point.get("aidInfo", {})
+        KoikatuSceneObjectLoader._save_route_point_aid_info(data_stream, aid_info)
+
+        # Write link
+        data_stream.write(struct.pack("b", int(route_point.get("link", False))))
+
+    @staticmethod
+    def _load_route_point_aid_info(data_stream: BinaryIO) -> Dict[str, Any]:
+        """
+        Load OIRoutePointAidInfo data
+        Based on OIRoutePointAidInfo.Load in C#
+        """
+        aid_info = {}
+
+        # Read dicKey
+        aid_info["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
+
+        # Read ChangeAmount (3 Vector3)
+        aid_info["changeAmount"] = {"position": KoikatuSceneObjectLoader._load_vector3(data_stream), "rotation": KoikatuSceneObjectLoader._load_vector3(data_stream), "scale": KoikatuSceneObjectLoader._load_vector3(data_stream)}
+
+        # Read isInit
+        aid_info["isInit"] = bool(struct.unpack("b", data_stream.read(1))[0])
+
+        return aid_info
+
+    @staticmethod
+    def _save_route_point_aid_info(data_stream: BinaryIO, aid_info: Dict[str, Any]) -> None:
+        """
+        Save OIRoutePointAidInfo data
+        Based on OIRoutePointAidInfo.Save in C#
+        """
+        # Write dicKey
+        data_stream.write(struct.pack("i", aid_info.get("dicKey", 0)))
+
+        # Write ChangeAmount (3 Vector3: position, rotation, scale)
+        change_amount = aid_info.get("changeAmount", {})
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("position", {"x": 0.0, "y": 0.0, "z": 0.0}))
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0}))
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0}))
+
+        # Write isInit
+        data_stream.write(struct.pack("b", int(aid_info.get("isInit", False))))
+
+    # ============================================================
+    # 5. OBJECT TYPE LOADERS
+    # ============================================================
+    """
+    Object type-specific load methods.
+
+    Each method handles loading a specific type of scene object:
+    - load_char_info: Characters (OICharInfo)
+    - load_item_info: Scene items (OIItemInfo)
+    - load_light_info: Light sources (OILightInfo)
+    - load_folder_info: Object folders (OIFolderInfo)
+    - load_route_info: Movement routes (OIRouteInfo)
+    - load_camera_info: Camera objects (OICameraInfo)
+    - load_text_info: Text objects (OITextInfo)
+
+    All methods populate the obj_info dictionary with loaded data.
+    """
 
     @staticmethod
     def load_char_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
         """Load character info data"""
         # Based on OICharInfo.Load in C#
-        data = {}
-
-        # Load ObjectInfo base data (base.Load in C#)
-        # ObjectInfo.Load reads: dicKey, changeAmount, treeState, visible
-        data["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
-
-        # Read changeAmount (position, rotation, scale)
-        data["position"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["rotation"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["scale"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["treeState"] = struct.unpack("i", data_stream.read(4))[0]
-        data["visible"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        # Load ObjectInfo base data (dicKey, position, rotation, scale, treeState, visible)
+        data = KoikatuSceneObjectLoader._load_object_info_base(data_stream)
 
         # Read sex
         data["sex"] = struct.unpack("i", data_stream.read(4))[0]
@@ -248,15 +587,8 @@ class KoikatuSceneObjectLoader:
     def load_item_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
         """Load item info data"""
         # Based on OIItemInfo.Load in C#
-        data = {}
-
-        # Load ObjectInfo base data
-        data["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
-        data["position"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["rotation"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["scale"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["treeState"] = struct.unpack("i", data_stream.read(4))[0]
-        data["visible"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        # Load ObjectInfo base data (dicKey, position, rotation, scale, treeState, visible)
+        data = KoikatuSceneObjectLoader._load_object_info_base(data_stream)
 
         # Read group, category, no
         data["group"] = struct.unpack("i", data_stream.read(4))[0]
@@ -309,7 +641,7 @@ class KoikatuSceneObjectLoader:
             data["line_width"] = struct.unpack("f", data_stream.read(4))[0]
         else:
             # Default values for older versions (from C# constructor)
-            data["line_color"] = {"r": 128.0/255.0, "g": 128.0/255.0, "b": 128.0/255.0, "a": 1.0}
+            data["line_color"] = {"r": 128.0 / 255.0, "g": 128.0 / 255.0, "b": 128.0 / 255.0, "a": 1.0}
             data["line_width"] = 1.0
 
         # Read emission color, power, and light cancel (version >= 0.0.7)
@@ -329,13 +661,7 @@ class KoikatuSceneObjectLoader:
             data["panel"] = KoikatuSceneObjectLoader.load_pattern_info(data_stream)
         else:
             # Default empty PatternInfo (from C# constructor)
-            data["panel"] = {
-                "key": 0,
-                "file_path": "",
-                "clamp": True,
-                "uv": {"x": 0.0, "y": 0.0, "z": 1.0, "w": 1.0},
-                "rot": 0.0
-            }
+            data["panel"] = {"key": 0, "file_path": "", "clamp": True, "uv": {"x": 0.0, "y": 0.0, "z": 1.0, "w": 1.0}, "rot": 0.0}
 
         # Read enable FK
         data["enable_fk"] = bool(struct.unpack("b", data_stream.read(1))[0])
@@ -372,15 +698,8 @@ class KoikatuSceneObjectLoader:
         Load light info data
         Based on OILightInfo.Load in C#
         """
-        data = {}
-
-        # Load ObjectInfo base data
-        data["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
-        data["position"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["rotation"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["scale"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["treeState"] = struct.unpack("i", data_stream.read(4))[0]
-        data["visible"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        # Load ObjectInfo base data (dicKey, position, rotation, scale, treeState, visible)
+        data = KoikatuSceneObjectLoader._load_object_info_base(data_stream)
 
         # Read light-specific data
         data["no"] = struct.unpack("i", data_stream.read(4))[0]
@@ -403,15 +722,8 @@ class KoikatuSceneObjectLoader:
         Load folder info data
         Based on OIFolderInfo.Load in C#
         """
-        data = {}
-
-        # Load ObjectInfo base data (base.Load in C#)
-        data["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
-        data["position"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["rotation"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["scale"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["treeState"] = struct.unpack("i", data_stream.read(4))[0]
-        data["visible"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        # Load ObjectInfo base data (dicKey, position, rotation, scale, treeState, visible)
+        data = KoikatuSceneObjectLoader._load_object_info_base(data_stream)
 
         # Read folder name
         name_bytes = load_string(data_stream)
@@ -423,77 +735,13 @@ class KoikatuSceneObjectLoader:
         obj_info["data"] = data
 
     @staticmethod
-    def _load_route_point_aid_info(data_stream: BinaryIO) -> Dict[str, Any]:
-        """
-        Load OIRoutePointAidInfo data
-        Based on OIRoutePointAidInfo.Load in C#
-        """
-        aid_info = {}
-
-        # Read dicKey
-        aid_info["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
-
-        # Read ChangeAmount (3 Vector3)
-        aid_info["changeAmount"] = {"position": KoikatuSceneObjectLoader._load_vector3(data_stream), "rotation": KoikatuSceneObjectLoader._load_vector3(data_stream), "scale": KoikatuSceneObjectLoader._load_vector3(data_stream)}
-
-        # Read isInit
-        aid_info["isInit"] = bool(struct.unpack("b", data_stream.read(1))[0])
-
-        return aid_info
-
-    @staticmethod
-    def _load_route_point_info(data_stream: BinaryIO, version: str = None) -> Dict[str, Any]:
-        """
-        Load OIRoutePointInfo data with version-specific handling
-        Based on OIRoutePointInfo.Load in C# (lines 50-75)
-        """
-        route_point = {}
-
-        # Read dicKey
-        route_point["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
-
-        # Read ChangeAmount (3 Vector3)
-        route_point["changeAmount"] = {"position": KoikatuSceneObjectLoader._load_vector3(data_stream), "rotation": KoikatuSceneObjectLoader._load_vector3(data_stream), "scale": KoikatuSceneObjectLoader._load_vector3(data_stream)}
-
-        # Read speed
-        route_point["speed"] = struct.unpack("f", data_stream.read(4))[0]
-
-        # Read easeType
-        route_point["easeType"] = struct.unpack("i", data_stream.read(4))[0]
-
-        # Version 1.0.3 only: read and discard a boolean
-        if KoikatuSceneObjectLoader._compare_versions(version, "1.0.3") == 0:
-            data_stream.read(1)  # Discard boolean
-
-        # Version >= 1.0.4.1: connection
-        if KoikatuSceneObjectLoader._compare_versions(version, "1.0.4.1") >= 0:
-            route_point["connection"] = struct.unpack("i", data_stream.read(4))[0]
-
-        # Version >= 1.0.4.1: aidInfo
-        if KoikatuSceneObjectLoader._compare_versions(version, "1.0.4.1") >= 0:
-            route_point["aidInfo"] = KoikatuSceneObjectLoader._load_route_point_aid_info(data_stream)
-
-        # Version >= 1.0.4.2: link
-        if KoikatuSceneObjectLoader._compare_versions(version, "1.0.4.2") >= 0:
-            route_point["link"] = bool(struct.unpack("b", data_stream.read(1))[0])
-
-        return route_point
-
-    @staticmethod
     def load_route_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
         """
         Load route info data with full version-specific handling
         Based on OIRouteInfo.Load in C# (lines 65-91)
         """
-        data = {}
-
-        # Load ObjectInfo base data (base.Load in C#)
-        data["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
-        data["position"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["rotation"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["scale"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["treeState"] = struct.unpack("i", data_stream.read(4))[0]
-        data["visible"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        # Load ObjectInfo base data (dicKey, position, rotation, scale, treeState, visible)
+        data = KoikatuSceneObjectLoader._load_object_info_base(data_stream)
 
         # Read route name
         name_bytes = load_string(data_stream)
@@ -532,15 +780,8 @@ class KoikatuSceneObjectLoader:
         Load camera info data
         Based on OICameraInfo.Load in C#
         """
-        data = {}
-
-        # Load ObjectInfo base data (base.Load in C#)
-        data["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
-        data["position"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["rotation"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["scale"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["treeState"] = struct.unpack("i", data_stream.read(4))[0]
-        data["visible"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        # Load ObjectInfo base data (dicKey, position, rotation, scale, treeState, visible)
+        data = KoikatuSceneObjectLoader._load_object_info_base(data_stream)
 
         # Read camera-specific data
         name_bytes = load_string(data_stream)
@@ -555,15 +796,8 @@ class KoikatuSceneObjectLoader:
         Load text info data
         Based on OITextInfo.Load in C#
         """
-        data = {}
-
-        # Load ObjectInfo base data (base.Load in C#)
-        data["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
-        data["position"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["rotation"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["scale"] = KoikatuSceneObjectLoader._load_vector3(data_stream)
-        data["treeState"] = struct.unpack("i", data_stream.read(4))[0]
-        data["visible"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        # Load ObjectInfo base data (dicKey, position, rotation, scale, treeState, visible)
+        data = KoikatuSceneObjectLoader._load_object_info_base(data_stream)
 
         # Read text-specific data
         data["id"] = struct.unpack("i", data_stream.read(4))[0]
@@ -588,256 +822,23 @@ class KoikatuSceneObjectLoader:
 
         obj_info["data"] = data
 
-    @staticmethod
-    def load_bone_info(data_stream: BinaryIO) -> Dict[str, Any]:
-        """
-        Load bone info data
-        Based on OIBoneInfo.Save/Load in C#
+    # ============================================================
+    # 6. OBJECT TYPE SAVERS
+    # ============================================================
+    """
+    Object type-specific save methods.
 
-        OIBoneInfo.Save writes: dicKey + changeAmount (3 Vector3)
-        OIBoneInfo.Load calls: base.Load(_other: false) which reads dicKey + changeAmount only
-        """
-        bone_data = {}
+    Each method handles saving a specific type of scene object:
+    - save_char_info: Characters (OICharInfo)
+    - save_item_info: Scene items (OIItemInfo)
+    - save_light_info: Light sources (OILightInfo)
+    - save_folder_info: Object folders (OIFolderInfo)
+    - save_route_info: Movement routes (OIRouteInfo)
+    - save_camera_info: Camera objects (OICameraInfo)
+    - save_text_info: Text objects (OITextInfo)
 
-        # Read dicKey (int)
-        bone_data["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
-
-        # Read ChangeAmount (ChangeAmount.Load/Save in C#)
-        # ChangeAmount contains 3 Vector3: position, rotation, scale
-        bone_data["changeAmount"] = {"position": KoikatuSceneObjectLoader._load_vector3(data_stream), "rotation": KoikatuSceneObjectLoader._load_vector3(data_stream), "scale": KoikatuSceneObjectLoader._load_vector3(data_stream)}
-
-        return bone_data
-
-    @staticmethod
-    def load_child_objects(data_stream: BinaryIO, version: str = None) -> list:
-        """
-        Load child objects recursively
-        Based on ObjectInfoAssist.LoadChild in C#
-        """
-        child_list = []
-
-        # Read count of child objects
-        count = struct.unpack("i", data_stream.read(4))[0]
-
-        for obj_idx in range(count):
-            # Read object type
-            obj_type = struct.unpack("i", data_stream.read(4))[0]
-
-            # Create object info based on type
-            obj_info = {"type": obj_type, "data": {}}
-
-            # Load object data based on type (recursively), passing version
-            if obj_type == 0:  # OICharInfo
-                KoikatuSceneObjectLoader.load_char_info(data_stream, obj_info, version)
-            elif obj_type == 1:  # OIItemInfo
-                KoikatuSceneObjectLoader.load_item_info(data_stream, obj_info, version)
-            elif obj_type == 2:  # OILightInfo
-                KoikatuSceneObjectLoader.load_light_info(data_stream, obj_info, version)
-            elif obj_type == 3:  # OIFolderInfo
-                KoikatuSceneObjectLoader.load_folder_info(data_stream, obj_info, version)
-            elif obj_type == 4:  # OIRouteInfo
-                KoikatuSceneObjectLoader.load_route_info(data_stream, obj_info, version)
-            elif obj_type == 5:  # OICameraInfo
-                KoikatuSceneObjectLoader.load_camera_info(data_stream, obj_info, version)
-            elif obj_type == 7:  # OITextInfo
-                KoikatuSceneObjectLoader.load_text_info(data_stream, obj_info, version)
-            else:
-                # Unknown type - this should not happen
-                print(f"Warning: Unknown object type {obj_type}")
-
-            child_list.append(obj_info)
-
-        return child_list
-
-    @staticmethod
-    def load_pattern_info(data_stream: BinaryIO) -> Dict[str, Any]:
-        """Load pattern info data"""
-        # Based on PatternInfo.Load in C#
-        pattern_data = {}
-
-        # Read key
-        pattern_data["key"] = struct.unpack("i", data_stream.read(4))[0]
-
-        # Read filePath using load_string
-        file_path_bytes = load_string(data_stream)
-        pattern_data["file_path"] = file_path_bytes.decode("utf-8")
-
-        # Read clamp
-        pattern_data["clamp"] = bool(struct.unpack("b", data_stream.read(1))[0])
-
-        # Read uv (Vector4)
-        uv_json = load_string(data_stream).decode("utf-8")
-        pattern_data["uv"] = json.loads(uv_json)
-
-        # Read rot
-        pattern_data["rot"] = struct.unpack("f", data_stream.read(4))[0]
-
-        return pattern_data
-
-    @staticmethod
-    def save_item_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
-        """Save item info data"""
-        # Based on OIItemInfo.Save in C#
-        data = obj_info["data"]
-
-        # Save ObjectInfo base data
-        KoikatuSceneObjectLoader.save_object_info_base(data_stream, data)
-
-        # Write group, category, no
-        data_stream.write(struct.pack("i", data["group"]))
-        data_stream.write(struct.pack("i", data["category"]))
-        data_stream.write(struct.pack("i", data["no"]))
-
-        # Write anime pattern (version >= 1.1.1.0)
-        if KoikatuSceneObjectLoader._compare_versions(version, "1.1.1.0") >= 0:
-            data_stream.write(struct.pack("i", data["anime_pattern"]))
-
-        # Write anime speed
-        data_stream.write(struct.pack("f", data["anime_speed"]))
-
-        # Write colors (version >= 0.0.3: 8 colors, else 7 colors)
-        num_colors = 8 if KoikatuSceneObjectLoader._compare_versions(version, "0.0.3") >= 0 else 7
-        for i in range(num_colors):
-            color = data["colors"][i] if i < len(data["colors"]) else {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0}
-            KoikatuSceneObjectLoader._write_string(data_stream, json.dumps(color, separators=(',', ':')).encode("utf-8"))
-
-        # Write patterns
-        for pattern in data["patterns"]:
-            KoikatuSceneObjectLoader.save_pattern_info(data_stream, pattern)
-
-        # Write alpha
-        data_stream.write(struct.pack("f", data["alpha"]))
-
-        # Write line color and width (version >= 0.0.4)
-        if KoikatuSceneObjectLoader._compare_versions(version, "0.0.4") >= 0:
-            KoikatuSceneObjectLoader._write_string(data_stream, json.dumps(data["line_color"], separators=(',', ':')).encode("utf-8"))
-            data_stream.write(struct.pack("f", data["line_width"]))
-
-        # Write emission color, power, and light cancel (version >= 0.0.7)
-        if KoikatuSceneObjectLoader._compare_versions(version, "0.0.7") >= 0:
-            KoikatuSceneObjectLoader._write_string(data_stream, json.dumps(data["emission_color"], separators=(',', ':')).encode("utf-8"))
-            data_stream.write(struct.pack("f", data["emission_power"]))
-            data_stream.write(struct.pack("f", data["light_cancel"]))
-
-        # Write panel (version >= 0.0.6)
-        if KoikatuSceneObjectLoader._compare_versions(version, "0.0.6") >= 0:
-            KoikatuSceneObjectLoader.save_pattern_info(data_stream, data["panel"])
-
-        # Write enable FK
-        data_stream.write(struct.pack("b", int(data["enable_fk"])))
-
-        # Write bones count
-        data_stream.write(struct.pack("i", len(data["bones"])))
-
-        # Write bones data
-        for bone_key, bone_data in data["bones"].items():
-            # Write bone key
-            bone_key_bytes = bone_key.encode("utf-8")
-            data_stream.write(struct.pack("i", len(bone_key_bytes)))
-            data_stream.write(bone_key_bytes)
-
-            # Write bone data
-            KoikatuSceneObjectLoader.save_bone_info(data_stream, bone_data)
-
-        # Write enable dynamic bone (version >= 1.0.1)
-        if KoikatuSceneObjectLoader._compare_versions(version, "1.0.1") >= 0:
-            data_stream.write(struct.pack("b", int(data["enable_dynamic_bone"])))
-
-        # Write anime normalized time
-        data_stream.write(struct.pack("f", data["anime_normalized_time"]))
-
-        # Write child objects count
-        data_stream.write(struct.pack("i", len(data.get("child", []))))
-
-        # Write child objects data
-        for child in data.get("child", []):
-            KoikatuSceneObjectLoader.save_child_object(data_stream, child, version)
-
-    @staticmethod
-    def save_object_info_base(data_stream: BinaryIO, data: Dict[str, Any]) -> None:
-        """Save ObjectInfo base data (ObjectInfo.Save)"""
-        # Save dicKey, changeAmount (position, rotation, scale), treeState, visible
-
-        # Write dicKey (int)
-        data_stream.write(struct.pack("i", data.get("dicKey", 0)))
-
-        # Write position (Vector3)
-        pos = data.get("position", {"x": 0.0, "y": 0.0, "z": 0.0})
-        KoikatuSceneObjectLoader._save_vector3(data_stream, pos, default=0.0)
-
-        # Write rotation (Vector3)
-        rot = data.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0})
-        KoikatuSceneObjectLoader._save_vector3(data_stream, rot, default=0.0)
-
-        # Write scale (Vector3)
-        scale = data.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0})
-        KoikatuSceneObjectLoader._save_vector3(data_stream, scale, default=1.0)
-
-        # Write treeState
-        data_stream.write(struct.pack("i", data.get("treeState", 0)))
-
-        # Write visible
-        data_stream.write(struct.pack("b", int(data.get("visible", True))))
-
-    @staticmethod
-    def save_pattern_info(data_stream: BinaryIO, pattern_data: Dict[str, Any]) -> None:
-        """Save pattern info data"""
-        # Based on PatternInfo.Save in C#
-
-        # Write key
-        data_stream.write(struct.pack("i", pattern_data["key"]))
-
-        # Write filePath
-        KoikatuSceneObjectLoader._write_string(data_stream, pattern_data["file_path"].encode("utf-8"))
-
-        # Write clamp
-        data_stream.write(struct.pack("b", int(pattern_data["clamp"])))
-
-        # Write uv (Vector4)
-        KoikatuSceneObjectLoader._write_string(data_stream, json.dumps(pattern_data["uv"], separators=(',', ':')).encode("utf-8"))
-
-        # Write rot
-        data_stream.write(struct.pack("f", pattern_data["rot"]))
-
-    @staticmethod
-    def save_bone_info(data_stream: BinaryIO, bone_data: Dict[str, Any]) -> None:
-        """Save bone info data"""
-        # Based on OIBoneInfo.Save in C#
-        # Write dicKey
-        data_stream.write(struct.pack("i", bone_data.get("dicKey", 0)))
-
-        # Write changeAmount (position, rotation, scale)
-        change_amount = bone_data.get("changeAmount", {})
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("position", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0}))
-
-    @staticmethod
-    def save_child_object(data_stream: BinaryIO, child_data: Dict[str, Any], version: str = None) -> None:
-        """Save child object data"""
-        # Based on ObjectInfoAssist.LoadChild - dispatch based on type
-        obj_type = child_data.get("type", -1)
-
-        # Write object type
-        data_stream.write(struct.pack("i", obj_type))
-
-        # Dispatch to appropriate save function based on type
-        if obj_type == 0:  # OICharInfo
-            KoikatuSceneObjectLoader.save_char_info(data_stream, child_data, version)
-        elif obj_type == 1:  # OIItemInfo
-            KoikatuSceneObjectLoader.save_item_info(data_stream, child_data, version)
-        elif obj_type == 2:  # OILightInfo
-            KoikatuSceneObjectLoader.save_light_info(data_stream, child_data, version)
-        elif obj_type == 3:  # OIFolderInfo
-            KoikatuSceneObjectLoader.save_folder_info(data_stream, child_data, version)
-        elif obj_type == 4:  # OIRouteInfo
-            KoikatuSceneObjectLoader.save_route_info(data_stream, child_data, version)
-        elif obj_type == 5:  # OICameraInfo
-            KoikatuSceneObjectLoader.save_camera_info(data_stream, child_data, version)
-        elif obj_type == 7:  # OITextInfo
-            KoikatuSceneObjectLoader.save_text_info(data_stream, child_data, version)
-        else:
-            raise ValueError(f"Unknown object type: {obj_type}")
+    All methods write data from the obj_info dictionary to binary format.
+    """
 
     @staticmethod
     def save_char_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
@@ -846,7 +847,7 @@ class KoikatuSceneObjectLoader:
         data = obj_info["data"]
 
         # Save ObjectInfo base data
-        KoikatuSceneObjectLoader.save_object_info_base(data_stream, data)
+        KoikatuSceneObjectLoader._save_object_info_base(data_stream, data)
 
         # Write sex
         data_stream.write(struct.pack("i", data.get("sex", 0)))
@@ -883,7 +884,7 @@ class KoikatuSceneObjectLoader:
             data_stream.write(struct.pack("i", child_key))
             data_stream.write(struct.pack("i", len(child_list)))
             for child_obj in child_list:
-                KoikatuSceneObjectLoader.save_child_object(data_stream, child_obj, version)
+                KoikatuSceneObjectLoader.save_child_objects(data_stream, child_obj, version)
 
         # Write kinematic mode
         data_stream.write(struct.pack("i", data.get("kinematic_mode", 0)))
@@ -974,9 +975,7 @@ class KoikatuSceneObjectLoader:
 
         # Write simple color as JSON string
         simple_color = data.get("simple_color", {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0})
-        simple_color_json = KoikatuSceneObjectLoader._color_to_json(simple_color)
-        simple_color_bytes = simple_color_json.encode('utf-8') if isinstance(simple_color_json, str) else simple_color_json
-        KoikatuSceneObjectLoader._write_string(data_stream, simple_color_bytes)
+        KoikatuSceneObjectLoader._save_color_json(data_stream, simple_color)
 
         # Write anime option param (2 floats)
         anime_option_param = data.get("anime_option_param", [0.0, 0.0])
@@ -1011,23 +1010,99 @@ class KoikatuSceneObjectLoader:
             data_stream.write(struct.pack("i", value))
 
     @staticmethod
+    def save_item_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+        """Save item info data"""
+        # Based on OIItemInfo.Save in C#
+        data = obj_info["data"]
+
+        # Save ObjectInfo base data
+        KoikatuSceneObjectLoader._save_object_info_base(data_stream, data)
+
+        # Write group, category, no
+        data_stream.write(struct.pack("i", data["group"]))
+        data_stream.write(struct.pack("i", data["category"]))
+        data_stream.write(struct.pack("i", data["no"]))
+
+        # Write anime pattern (version >= 1.1.1.0)
+        if KoikatuSceneObjectLoader._compare_versions(version, "1.1.1.0") >= 0:
+            data_stream.write(struct.pack("i", data["anime_pattern"]))
+
+        # Write anime speed
+        data_stream.write(struct.pack("f", data["anime_speed"]))
+
+        # Write colors (version >= 0.0.3: 8 colors, else 7 colors)
+        num_colors = 8 if KoikatuSceneObjectLoader._compare_versions(version, "0.0.3") >= 0 else 7
+        for i in range(num_colors):
+            color = data["colors"][i] if i < len(data["colors"]) else {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0}
+            write_string(data_stream, json.dumps(color, separators=(",", ":")).encode("utf-8"))
+
+        # Write patterns
+        for pattern in data["patterns"]:
+            KoikatuSceneObjectLoader.save_pattern_info(data_stream, pattern)
+
+        # Write alpha
+        data_stream.write(struct.pack("f", data["alpha"]))
+
+        # Write line color and width (version >= 0.0.4)
+        if KoikatuSceneObjectLoader._compare_versions(version, "0.0.4") >= 0:
+            write_string(data_stream, json.dumps(data["line_color"], separators=(",", ":")).encode("utf-8"))
+            data_stream.write(struct.pack("f", data["line_width"]))
+
+        # Write emission color, power, and light cancel (version >= 0.0.7)
+        if KoikatuSceneObjectLoader._compare_versions(version, "0.0.7") >= 0:
+            write_string(data_stream, json.dumps(data["emission_color"], separators=(",", ":")).encode("utf-8"))
+            data_stream.write(struct.pack("f", data["emission_power"]))
+            data_stream.write(struct.pack("f", data["light_cancel"]))
+
+        # Write panel (version >= 0.0.6)
+        if KoikatuSceneObjectLoader._compare_versions(version, "0.0.6") >= 0:
+            KoikatuSceneObjectLoader.save_pattern_info(data_stream, data["panel"])
+
+        # Write enable FK
+        data_stream.write(struct.pack("b", int(data["enable_fk"])))
+
+        # Write bones count
+        data_stream.write(struct.pack("i", len(data["bones"])))
+
+        # Write bones data
+        for bone_key, bone_data in data["bones"].items():
+            # Write bone key
+            bone_key_bytes = bone_key.encode("utf-8")
+            data_stream.write(struct.pack("i", len(bone_key_bytes)))
+            data_stream.write(bone_key_bytes)
+
+            # Write bone data
+            KoikatuSceneObjectLoader.save_bone_info(data_stream, bone_data)
+
+        # Write enable dynamic bone (version >= 1.0.1)
+        if KoikatuSceneObjectLoader._compare_versions(version, "1.0.1") >= 0:
+            data_stream.write(struct.pack("b", int(data["enable_dynamic_bone"])))
+
+        # Write anime normalized time
+        data_stream.write(struct.pack("f", data["anime_normalized_time"]))
+
+        # Write child objects count
+        data_stream.write(struct.pack("i", len(data.get("child", []))))
+
+        # Write child objects data
+        for child in data.get("child", []):
+            KoikatuSceneObjectLoader.save_child_objects(data_stream, child, version)
+
+    @staticmethod
     def save_light_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
         """Save light info data"""
         # Based on OILightInfo.Save in C#
         data = obj_info["data"]
 
         # Save ObjectInfo base data
-        KoikatuSceneObjectLoader.save_object_info_base(data_stream, data)
+        KoikatuSceneObjectLoader._save_object_info_base(data_stream, data)
 
         # Write no
         data_stream.write(struct.pack("i", data.get("no", 0)))
 
         # Write color (r, g, b, a)
         color = data.get("color", {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0})
-        data_stream.write(struct.pack("f", color.get("r", 1.0)))
-        data_stream.write(struct.pack("f", color.get("g", 1.0)))
-        data_stream.write(struct.pack("f", color.get("b", 1.0)))
-        data_stream.write(struct.pack("f", color.get("a", 1.0)))
+        KoikatuSceneObjectLoader._save_color_rgba(data_stream, color)
 
         # Write intensity, range, spotAngle
         data_stream.write(struct.pack("f", data.get("intensity", 1.0)))
@@ -1046,12 +1121,12 @@ class KoikatuSceneObjectLoader:
         data = obj_info["data"]
 
         # Save ObjectInfo base data
-        KoikatuSceneObjectLoader.save_object_info_base(data_stream, data)
+        KoikatuSceneObjectLoader._save_object_info_base(data_stream, data)
 
         # Write name (string)
         name = data.get("name", "")
-        name_bytes = name.encode('utf-8') if isinstance(name, str) else name
-        KoikatuSceneObjectLoader._write_string(data_stream, name_bytes)
+        name_bytes = name.encode("utf-8") if isinstance(name, str) else name
+        write_string(data_stream, name_bytes)
 
         # Write child count
         child_list = data.get("child", [])
@@ -1059,7 +1134,7 @@ class KoikatuSceneObjectLoader:
 
         # Write each child object
         for child in child_list:
-            KoikatuSceneObjectLoader.save_child_object(data_stream, child, version)
+            KoikatuSceneObjectLoader.save_child_objects(data_stream, child, version)
 
     @staticmethod
     def save_route_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
@@ -1068,18 +1143,18 @@ class KoikatuSceneObjectLoader:
         data = obj_info["data"]
 
         # Save ObjectInfo base data
-        KoikatuSceneObjectLoader.save_object_info_base(data_stream, data)
+        KoikatuSceneObjectLoader._save_object_info_base(data_stream, data)
 
         # Write name (string)
         name = data.get("name", "")
-        name_bytes = name.encode('utf-8') if isinstance(name, str) else name
-        KoikatuSceneObjectLoader._write_string(data_stream, name_bytes)
+        name_bytes = name.encode("utf-8") if isinstance(name, str) else name
+        write_string(data_stream, name_bytes)
 
         # Write child count and children
         child_list = data.get("child", [])
         data_stream.write(struct.pack("i", len(child_list)))
         for child in child_list:
-            KoikatuSceneObjectLoader.save_child_object(data_stream, child, version)
+            KoikatuSceneObjectLoader.save_child_objects(data_stream, child, version)
 
         # Write route count and route points
         route_list = data.get("route", [])
@@ -1097,9 +1172,7 @@ class KoikatuSceneObjectLoader:
 
         # Write color as JSON string
         color = data.get("color", {"r": 0.0, "g": 0.0, "b": 1.0, "a": 1.0})
-        color_json = KoikatuSceneObjectLoader._color_to_json(color)
-        color_bytes = color_json.encode('utf-8') if isinstance(color_json, str) else color_json
-        KoikatuSceneObjectLoader._write_string(data_stream, color_bytes)
+        KoikatuSceneObjectLoader._save_color_json(data_stream, color)
 
     @staticmethod
     def save_camera_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
@@ -1108,12 +1181,12 @@ class KoikatuSceneObjectLoader:
         data = obj_info["data"]
 
         # Save ObjectInfo base data
-        KoikatuSceneObjectLoader.save_object_info_base(data_stream, data)
+        KoikatuSceneObjectLoader._save_object_info_base(data_stream, data)
 
         # Write name (string)
         name = data.get("name", "")
-        name_bytes = name.encode('utf-8') if isinstance(name, str) else name
-        KoikatuSceneObjectLoader._write_string(data_stream, name_bytes)
+        name_bytes = name.encode("utf-8") if isinstance(name, str) else name
+        write_string(data_stream, name_bytes)
 
         # Write active (boolean)
         data_stream.write(struct.pack("b", int(data.get("active", False))))
@@ -1125,22 +1198,18 @@ class KoikatuSceneObjectLoader:
         data = obj_info["data"]
 
         # Save ObjectInfo base data
-        KoikatuSceneObjectLoader.save_object_info_base(data_stream, data)
+        KoikatuSceneObjectLoader._save_object_info_base(data_stream, data)
 
         # Write id
         data_stream.write(struct.pack("i", data.get("id", 0)))
 
         # Write color as JSON string
         color = data.get("color", {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0})
-        color_json = KoikatuSceneObjectLoader._color_to_json(color)
-        color_bytes = color_json.encode('utf-8') if isinstance(color_json, str) else color_json
-        KoikatuSceneObjectLoader._write_string(data_stream, color_bytes)
+        KoikatuSceneObjectLoader._save_color_json(data_stream, color)
 
         # Write outlineColor as JSON string
         outline_color = data.get("outlineColor", {"r": 0.0, "g": 0.0, "b": 0.0, "a": 1.0})
-        outline_color_json = KoikatuSceneObjectLoader._color_to_json(outline_color)
-        outline_color_bytes = outline_color_json.encode('utf-8') if isinstance(outline_color_json, str) else outline_color_json
-        KoikatuSceneObjectLoader._write_string(data_stream, outline_color_bytes)
+        KoikatuSceneObjectLoader._save_color_json(data_stream, outline_color)
 
         # Write outlineSize
         data_stream.write(struct.pack("f", data.get("outlineSize", 1.0)))
@@ -1150,71 +1219,95 @@ class KoikatuSceneObjectLoader:
         data_stream.write(struct.pack("i", len(text_infos_bytes)))
         data_stream.write(text_infos_bytes)
 
-    @staticmethod
-    def _save_route_point_aid_info(data_stream: BinaryIO, aid_info: Dict[str, Any]) -> None:
-        """
-        Save OIRoutePointAidInfo data
-        Based on OIRoutePointAidInfo.Save in C#
-        """
-        # Write dicKey
-        data_stream.write(struct.pack("i", aid_info.get("dicKey", 0)))
+    # ============================================================
+    # 7. CHILD OBJECT HANDLING
+    # ============================================================
+    """
+    Child object handling methods.
 
-        # Write ChangeAmount (3 Vector3: position, rotation, scale)
-        change_amount = aid_info.get("changeAmount", {})
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("position", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0}))
+    These methods handle recursive loading and saving of child objects.
+    Many object types (characters, items, folders, routes) can contain
+    nested child objects that need to be processed recursively.
 
-        # Write isInit
-        data_stream.write(struct.pack("b", int(aid_info.get("isInit", False))))
+    Methods follow the ObjectInfoAssist.LoadChild/SaveChild pattern from C#.
+    """
 
     @staticmethod
-    def _save_route_point_info(data_stream: BinaryIO, route_point: Dict[str, Any]) -> None:
+    def load_child_objects(data_stream: BinaryIO, version: str = None) -> list:
         """
-        Save OIRoutePointInfo data
-        Based on OIRoutePointInfo.Save in C#
+        Load child objects recursively
+        Based on ObjectInfoAssist.LoadChild in C#
         """
-        # Write dicKey
-        data_stream.write(struct.pack("i", route_point.get("dicKey", 0)))
+        child_list = []
 
-        # Write ChangeAmount (3 Vector3: position, rotation, scale)
-        change_amount = route_point.get("changeAmount", {})
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("position", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0}))
+        # Read count of child objects
+        count = struct.unpack("i", data_stream.read(4))[0]
 
-        # Write speed
-        data_stream.write(struct.pack("f", route_point.get("speed", 2.0)))
+        for obj_idx in range(count):
+            # Read object type
+            obj_type = struct.unpack("i", data_stream.read(4))[0]
 
-        # Write easeType
-        data_stream.write(struct.pack("i", route_point.get("easeType", 0)))
+            # Create object info based on type
+            obj_info = {"type": obj_type, "data": {}}
 
-        # Write connection
-        data_stream.write(struct.pack("i", route_point.get("connection", 0)))
+            # Load object data based on type (recursively), passing version
+            KoikatuSceneObjectLoader._dispatch_load(data_stream, obj_type, obj_info, version)
 
-        # Write aidInfo
-        aid_info = route_point.get("aidInfo", {})
-        KoikatuSceneObjectLoader._save_route_point_aid_info(data_stream, aid_info)
+            child_list.append(obj_info)
 
-        # Write link
-        data_stream.write(struct.pack("b", int(route_point.get("link", False))))
+        return child_list
 
     @staticmethod
-    def _write_string(data_stream: BinaryIO, value: bytes) -> None:
-        """
-        Write a string to the data stream using the same format as load_string
-        Using write_string from funcs.py
-        """
-        write_string(data_stream, value)
+    def save_child_objects(data_stream: BinaryIO, child_data: Dict[str, Any], version: str = None) -> None:
+        """Save child object data (Note: Despite the plural name, this saves one object at a time)"""
+        # Based on ObjectInfoAssist.LoadChild - dispatch based on type
+        obj_type = child_data.get("type", -1)
+
+        # Write object type
+        data_stream.write(struct.pack("i", obj_type))
+
+        # Dispatch to appropriate save function based on type
+        KoikatuSceneObjectLoader._dispatch_save(data_stream, child_data, version)
+
+    # ============================================================
+    # 9. UTILITY METHODS
+    # ============================================================
+    """
+    General utility methods used across multiple sections.
+
+    - _compare_versions: Version string comparison for compatibility checks
+    - _color_to_json: Color dictionary to JSON string conversion
+
+    These methods provide common functionality needed by multiple loaders/savers.
+    """
 
     @staticmethod
-    def parse_color_json(json_str: str) -> Dict[str, float]:
-        """Parse color from JSON string"""
-        # JSONとして解析
-        color_data = json.loads(json_str)
-        return {"r": color_data.get("r", 0), "g": color_data.get("g", 0), "b": color_data.get("b", 0), "a": color_data.get("a", 1.0)}
+    def _compare_versions(version_str: str, target: str) -> int:
+        """
+        Compare version strings (e.g., "1.0.3.0" vs "1.0.4.0")
+        Returns: -1 if version < target, 0 if equal, 1 if version > target
+        """
+        if version_str is None:
+            # If no version provided, assume latest
+            return 1
+
+        version_parts = [int(x) for x in version_str.split(".")]
+        target_parts = [int(x) for x in target.split(".")]
+
+        # Pad shorter version with zeros
+        while len(version_parts) < len(target_parts):
+            version_parts.append(0)
+        while len(target_parts) < len(version_parts):
+            target_parts.append(0)
+
+        for v, t in zip(version_parts, target_parts):
+            if v < t:
+                return -1
+            elif v > t:
+                return 1
+        return 0
 
     @staticmethod
     def _color_to_json(color: Dict[str, float]) -> str:
         """Convert color dictionary to JSON string"""
-        return json.dumps({"r": color.get("r", 0.0), "g": color.get("g", 0.0), "b": color.get("b", 0.0), "a": color.get("a", 1.0)}, separators=(',', ':'))
+        return json.dumps({"r": color.get("r", 0.0), "g": color.get("g", 0.0), "b": color.get("b", 0.0), "a": color.get("a", 1.0)}, separators=(",", ":"))

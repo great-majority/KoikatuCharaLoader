@@ -5,7 +5,7 @@ import json
 import struct
 from typing import Union
 
-from kkloader.funcs import get_png, load_length, load_string, load_type, msg_unpack, msg_pack, write_string
+from kkloader.funcs import get_png, load_length, load_string, load_type, msg_pack, msg_unpack, write_string
 from kkloader.KoikatuSceneObjectLoader import KoikatuSceneObjectLoader
 
 
@@ -15,17 +15,18 @@ class KoikatuSceneData:
     This is a Python implementation of the Studio.SceneInfo.Load function in C#.
     """
 
-    @staticmethod
-    def _load_vector3_as_tuple(data_stream):
-        """Load a Vector3 (x, y, z) from the data stream and return as tuple of floats"""
-        return (load_type(data_stream, "f"), load_type(data_stream, "f"), load_type(data_stream, "f"))
+    # ============================================================
+    # 1. INITIALIZATION & CLASS METHODS
+    # ============================================================
+    """
+    Core initialization and loading methods.
 
-    @staticmethod
-    def _save_vector3_dict(data_stream, vector3_dict):
-        """Save a Vector3 dictionary (x, y, z) to the data stream"""
-        data_stream.write(struct.pack("f", vector3_dict["x"]))
-        data_stream.write(struct.pack("f", vector3_dict["y"]))
-        data_stream.write(struct.pack("f", vector3_dict["z"]))
+    - __init__: Initialize scene data with default values for all fields
+    - load: Class method to load scene data from files, bytes, or BytesIO objects
+
+    The load method handles version-aware deserialization, supporting multiple
+    scene file format versions (0.0.1 through 1.1.2.1+).
+    """
 
     def __init__(self):
         self.image = None
@@ -117,22 +118,7 @@ class KoikatuSceneData:
             obj_info = {"type": obj_type, "data": {}}
 
             # Load object data based on type
-            if obj_type == 0:  # OICharInfo
-                KoikatuSceneObjectLoader.load_char_info(data_stream, obj_info, version_str)
-            elif obj_type == 1:  # OIItemInfo
-                KoikatuSceneObjectLoader.load_item_info(data_stream, obj_info, version_str)
-            elif obj_type == 2:  # OILightInfo
-                KoikatuSceneObjectLoader.load_light_info(data_stream, obj_info, version_str)
-            elif obj_type == 3:  # OIFolderInfo
-                KoikatuSceneObjectLoader.load_folder_info(data_stream, obj_info, version_str)
-            elif obj_type == 4:  # OIRouteInfo
-                KoikatuSceneObjectLoader.load_route_info(data_stream, obj_info, version_str)
-            elif obj_type == 5:  # OICameraInfo
-                KoikatuSceneObjectLoader.load_camera_info(data_stream, obj_info, version_str)
-            elif obj_type == 7:  # OITextInfo
-                KoikatuSceneObjectLoader.load_text_info(data_stream, obj_info, version_str)
-            else:
-                pass
+            KoikatuSceneObjectLoader._dispatch_load(data_stream, obj_type, obj_info, version_str)
 
             ks.dicObject[key] = obj_info
 
@@ -261,6 +247,266 @@ class KoikatuSceneData:
 
         return ks
 
+    # ============================================================
+    # 2. PUBLIC INTERFACE METHODS
+    # ============================================================
+    """
+    Public API for interacting with scene data.
+
+    - save: Save scene data to file or BytesIO
+    - __bytes__: Convert scene to binary bytes (used by save)
+    - to_dict: Convert scene metadata to dictionary
+    - __str__: String representation for debugging
+
+    These methods provide the main user-facing interface for working with scenes.
+    """
+
+    def save(self, filelike: Union[str, io.BytesIO]) -> None:
+        """
+        Save Koikatu scene data to a file or BytesIO object.
+
+        Args:
+            filelike: Path to the file or BytesIO object to save the scene data to
+        """
+        if isinstance(filelike, str):
+            with open(filelike, "bw") as f:
+                f.write(bytes(self))
+        elif isinstance(filelike, io.BytesIO):
+            filelike.write(bytes(self))
+        else:
+            raise ValueError(f"Unsupported output type: {type(filelike)}")
+
+    def __bytes__(self) -> bytes:
+        """
+        Convert the scene data to bytes.
+
+        Returns:
+            bytes: The scene data as bytes
+        """
+        data_stream = io.BytesIO()
+
+        # Write PNG data if available
+        if self.image:
+            data_stream.write(self.image)
+
+        # Write version (always save with latest version like C# does with m_Version = 1.1.2.1)
+        save_version = "1.1.2.1"
+        version_bytes = save_version.encode("utf-8")
+        data_stream.write(struct.pack("b", len(version_bytes)))
+        data_stream.write(version_bytes)
+
+        # Write object dictionary
+        data_stream.write(struct.pack("i", len(self.dicObject)))
+        for key, obj_info in self.dicObject.items():
+            data_stream.write(struct.pack("i", key))
+            data_stream.write(struct.pack("i", obj_info["type"]))
+
+            # Save object data based on type (using save_version, not self.version)
+            try:
+                KoikatuSceneObjectLoader._dispatch_save(data_stream, obj_info, save_version)
+            except NotImplementedError as e:
+                # 実装されていない関数が呼ばれた場合は、エラーを発生させる
+                raise NotImplementedError(f"Cannot save object of type {obj_info['type']}: {str(e)}")
+
+        # Write map info
+        data_stream.write(struct.pack("i", self.map))
+
+        # Write caMap (ChangeAmount)
+        self._save_change_amount(data_stream)
+
+        # Write sunLightType
+        data_stream.write(struct.pack("i", self.sunLightType))
+
+        # Write mapOption
+        data_stream.write(struct.pack("b", int(self.mapOption)))
+
+        # Write aceNo
+        data_stream.write(struct.pack("i", self.aceNo))
+
+        # Write aceBlend
+        data_stream.write(struct.pack("f", self.aceBlend))
+
+        # Write AOE settings
+        data_stream.write(struct.pack("b", int(self.enableAOE)))
+        aoe_color_bytes = json.dumps(self.aoeColor, separators=(",", ":")).encode("utf-8")
+        data_stream.write(struct.pack("b", len(aoe_color_bytes)))
+        data_stream.write(aoe_color_bytes)
+        data_stream.write(struct.pack("f", self.aoeRadius))
+
+        # Write bloom settings
+        data_stream.write(struct.pack("b", int(self.enableBloom)))
+        data_stream.write(struct.pack("f", self.bloomIntensity))
+        data_stream.write(struct.pack("f", self.bloomBlur))
+        data_stream.write(struct.pack("f", self.bloomThreshold))
+
+        # Write depth settings
+        data_stream.write(struct.pack("b", int(self.enableDepth)))
+        data_stream.write(struct.pack("f", self.depthFocalSize))
+        data_stream.write(struct.pack("f", self.depthAperture))
+
+        # Write vignette settings
+        data_stream.write(struct.pack("b", int(self.enableVignette)))
+
+        # Write fog settings
+        data_stream.write(struct.pack("b", int(self.enableFog)))
+        fog_color_bytes = json.dumps(self.fogColor, separators=(",", ":")).encode("utf-8")
+        data_stream.write(struct.pack("b", len(fog_color_bytes)))
+        data_stream.write(fog_color_bytes)
+        data_stream.write(struct.pack("f", self.fogHeight))
+        data_stream.write(struct.pack("f", self.fogStartDistance))
+
+        # Write sun shafts settings
+        data_stream.write(struct.pack("b", int(self.enableSunShafts)))
+        sun_threshold_color_bytes = json.dumps(self.sunThresholdColor, separators=(",", ":")).encode("utf-8")
+        data_stream.write(struct.pack("b", len(sun_threshold_color_bytes)))
+        data_stream.write(sun_threshold_color_bytes)
+        sun_color_bytes = json.dumps(self.sunColor, separators=(",", ":")).encode("utf-8")
+        data_stream.write(struct.pack("b", len(sun_color_bytes)))
+        data_stream.write(sun_color_bytes)
+
+        # Write sunCaster
+        data_stream.write(struct.pack("i", self.sunCaster))
+
+        # Write enableShadow
+        data_stream.write(struct.pack("b", int(self.enableShadow)))
+
+        # Write face settings
+        data_stream.write(struct.pack("b", int(self.faceNormal)))
+        data_stream.write(struct.pack("b", int(self.faceShadow)))
+        data_stream.write(struct.pack("f", self.lineColorG))
+        ambient_shadow_bytes = json.dumps(self.ambientShadow, separators=(",", ":")).encode("utf-8")
+        data_stream.write(struct.pack("b", len(ambient_shadow_bytes)))
+        data_stream.write(ambient_shadow_bytes)
+
+        # Write additional face settings
+        data_stream.write(struct.pack("f", self.lineWidthG))
+        data_stream.write(struct.pack("i", self.rampG))
+        data_stream.write(struct.pack("f", self.ambientShadowG))
+
+        # Write shaderType
+        data_stream.write(struct.pack("i", self.shaderType))
+
+        # Write skyInfo
+        sky_info_bytes, sky_info_len = msg_pack(self.skyInfo)
+        data_stream.write(struct.pack("i", sky_info_len))
+        data_stream.write(sky_info_bytes)
+
+        # Write camera data
+        self._save_camera_data(data_stream, self.cameraSaveData)
+
+        # Write camera array data
+        for camera in self.cameraData:
+            self._save_camera_data(data_stream, camera)
+
+        # Write light settings
+        self._save_chara_light(data_stream, self.charaLight)
+        self._save_map_light(data_stream, self.mapLight)
+
+        # Write BGM, ENV, and outside sound settings
+        self._save_bgm_ctrl(data_stream, self.bgmCtrl)
+        self._save_env_ctrl(data_stream, self.envCtrl)
+        self._save_outside_sound_ctrl(data_stream, self.outsideSoundCtrl)
+
+        # Write background and frame
+        background_bytes = self.background.encode("utf-8")
+        data_stream.write(struct.pack("b", len(background_bytes)))
+        data_stream.write(background_bytes)
+        frame_bytes = self.frame.encode("utf-8")
+        data_stream.write(struct.pack("b", len(frame_bytes)))
+        data_stream.write(frame_bytes)
+
+        return data_stream.getvalue()
+
+    def to_dict(self):
+        """Convert the scene data to a dictionary"""
+        return {
+            "version": self.version,
+            "dataVersion": self.dataVersion,
+            "map": self.map,
+            "sunLightType": self.sunLightType,
+            "mapOption": self.mapOption,
+            "aceNo": self.aceNo,
+            "aceBlend": self.aceBlend,
+            "enableAOE": self.enableAOE,
+            "aoeColor": self.aoeColor,
+            "aoeRadius": self.aoeRadius,
+            "enableBloom": self.enableBloom,
+            "bloomIntensity": self.bloomIntensity,
+            "bloomBlur": self.bloomBlur,
+            "bloomThreshold": self.bloomThreshold,
+            "enableDepth": self.enableDepth,
+            "depthFocalSize": self.depthFocalSize,
+            "depthAperture": self.depthAperture,
+            "enableVignette": self.enableVignette,
+            "enableFog": self.enableFog,
+            "fogColor": self.fogColor,
+            "fogHeight": self.fogHeight,
+            "fogStartDistance": self.fogStartDistance,
+            "enableSunShafts": self.enableSunShafts,
+            "sunThresholdColor": self.sunThresholdColor,
+            "sunColor": self.sunColor,
+            "sunCaster": self.sunCaster,
+            "enableShadow": self.enableShadow,
+            "faceNormal": self.faceNormal,
+            "faceShadow": self.faceShadow,
+            "lineColorG": self.lineColorG,
+            "ambientShadow": self.ambientShadow,
+            "lineWidthG": self.lineWidthG,
+            "rampG": self.rampG,
+            "ambientShadowG": self.ambientShadowG,
+            "shaderType": self.shaderType,
+            "skyInfo": self.skyInfo,
+            "background": self.background,
+            "frame": self.frame,
+            "objectCount": len(self.dicObject),
+        }
+
+    def __str__(self):
+        """String representation of the scene data"""
+        return f"KoikatuSceneData(version={self.version}, objects={len(self.dicObject)})"
+
+    # ============================================================
+    # 3. PRIMITIVE TYPE HELPERS
+    # ============================================================
+    """
+    Low-level data type helpers.
+
+    - _load_vector3_as_tuple: Read Vector3 as tuple (x, y, z)
+    - _save_vector3_dict: Write Vector3 from dictionary {x, y, z}
+
+    These methods handle basic 3D vector serialization used throughout the scene format.
+    """
+
+    @staticmethod
+    def _load_vector3_as_tuple(data_stream):
+        """Load a Vector3 (x, y, z) from the data stream and return as tuple of floats"""
+        return (load_type(data_stream, "f"), load_type(data_stream, "f"), load_type(data_stream, "f"))
+
+    @staticmethod
+    def _save_vector3_dict(data_stream, vector3_dict):
+        """Save a Vector3 dictionary (x, y, z) to the data stream"""
+        data_stream.write(struct.pack("f", vector3_dict["x"]))
+        data_stream.write(struct.pack("f", vector3_dict["y"]))
+        data_stream.write(struct.pack("f", vector3_dict["z"]))
+
+    # ============================================================
+    # 4. SCENE DATA COMPONENT LOADERS
+    # ============================================================
+    """
+    Scene-level component load methods.
+
+    These methods handle loading various scene-wide settings:
+    - _load_change_amount: Map transform data (position, rotation, scale)
+    - _load_camera_data: Camera position, rotation, FOV settings
+    - _load_chara_light: Character lighting configuration
+    - _load_map_light: Map/environment lighting configuration
+    - _load_bgm_ctrl: Background music control settings
+    - _load_env_ctrl: Environment sound control settings
+    - _load_outside_sound_ctrl: Outdoor ambient sound settings
+
+    All methods correspond to C# serialization classes in Studio.
+    """
+
     def _load_change_amount(self, data_stream):
         """
         Load ChangeAmount data
@@ -316,20 +562,7 @@ class KoikatuSceneData:
         Load character light data
         Based on CameraLightCtrl.LightInfo.Load in C#
         """
-        # Read color (JSON string)
-        color_json = load_string(data_stream).decode("utf-8")
-        color = self._parse_color_json(color_json)
-
-        # Read intensity (float)
-        intensity = load_type(data_stream, "f")
-
-        # Read rotation (2 floats)
-        rot = [load_type(data_stream, "f"), load_type(data_stream, "f")]
-
-        # Read shadow (boolean)
-        shadow = bool(load_type(data_stream, "b"))
-
-        return {"color": color, "intensity": intensity, "rot": rot, "shadow": shadow}
+        return KoikatuSceneObjectLoader._load_light_info_base(data_stream)
 
     def _load_map_light(self, data_stream):
         """
@@ -337,24 +570,13 @@ class KoikatuSceneData:
         Based on CameraLightCtrl.MapLightInfo.Load in C#
         """
         # First load base LightInfo data
-        # Read color (JSON string)
-        color_json = load_string(data_stream).decode("utf-8")
-        color = self._parse_color_json(color_json)
-
-        # Read intensity (float)
-        intensity = load_type(data_stream, "f")
-
-        # Read rotation (2 floats)
-        rot = [load_type(data_stream, "f"), load_type(data_stream, "f")]
-
-        # Read shadow (boolean)
-        shadow = bool(load_type(data_stream, "b"))
+        result = KoikatuSceneObjectLoader._load_light_info_base(data_stream)
 
         # Read MapLightInfo specific data
         # Read light type (int)
-        light_type = load_type(data_stream, "i")
+        result["type"] = load_type(data_stream, "i")
 
-        return {"color": color, "intensity": intensity, "rot": rot, "shadow": shadow, "type": light_type}
+        return result
 
     def _load_bgm_ctrl(self, data_stream):
         """
@@ -404,209 +626,23 @@ class KoikatuSceneData:
 
         return {"play": play, "repeat": repeat, "fileName": file_name}
 
-    @staticmethod
-    def _parse_color_json(json_str):
-        """Parse color from JSON string"""
-        return KoikatuSceneObjectLoader.parse_color_json(json_str)
+    # ============================================================
+    # 5. SCENE DATA COMPONENT SAVERS
+    # ============================================================
+    """
+    Scene-level component save methods.
 
-    @staticmethod
-    def _compare_versions(version1, version2):
-        """
-        Compare two version strings.
+    These methods handle saving various scene-wide settings:
+    - _save_change_amount: Map transform data (position, rotation, scale)
+    - _save_camera_data: Camera position, rotation, FOV settings
+    - _save_chara_light: Character lighting configuration
+    - _save_map_light: Map/environment lighting configuration
+    - _save_bgm_ctrl: Background music control settings
+    - _save_env_ctrl: Environment sound control settings
+    - _save_outside_sound_ctrl: Outdoor ambient sound settings
 
-        Returns:
-            int: -1 if version1 < version2, 0 if version1 == version2, 1 if version1 > version2
-        """
-        v1_parts = version1.split(".")
-        v2_parts = version2.split(".")
-
-        # Pad with zeros to make lengths equal
-        while len(v1_parts) < len(v2_parts):
-            v1_parts.append("0")
-        while len(v2_parts) < len(v1_parts):
-            v2_parts.append("0")
-
-        for i in range(len(v1_parts)):
-            v1 = int(v1_parts[i])
-            v2 = int(v2_parts[i])
-
-            if v1 < v2:
-                return -1
-            elif v1 > v2:
-                return 1
-
-        return 0
-
-    def save(self, filelike: Union[str, io.BytesIO]) -> None:
-        """
-        Save Koikatu scene data to a file or BytesIO object.
-
-        Args:
-            filelike: Path to the file or BytesIO object to save the scene data to
-        """
-        if isinstance(filelike, str):
-            with open(filelike, "bw") as f:
-                f.write(bytes(self))
-        elif isinstance(filelike, io.BytesIO):
-            filelike.write(bytes(self))
-        else:
-            raise ValueError(f"Unsupported output type: {type(filelike)}")
-
-    def __bytes__(self) -> bytes:
-        """
-        Convert the scene data to bytes.
-
-        Returns:
-            bytes: The scene data as bytes
-        """
-        data_stream = io.BytesIO()
-
-        # Write PNG data if available
-        if self.image:
-            data_stream.write(self.image)
-
-        # Write version (always save with latest version like C# does with m_Version = 1.1.2.1)
-        save_version = "1.1.2.1"
-        version_bytes = save_version.encode("utf-8")
-        data_stream.write(struct.pack("b", len(version_bytes)))
-        data_stream.write(version_bytes)
-
-        # Write object dictionary
-        data_stream.write(struct.pack("i", len(self.dicObject)))
-        for key, obj_info in self.dicObject.items():
-            data_stream.write(struct.pack("i", key))
-            data_stream.write(struct.pack("i", obj_info["type"]))
-
-            # Save object data based on type (using save_version, not self.version)
-            try:
-                if obj_info["type"] == 0:  # OICharInfo
-                    KoikatuSceneObjectLoader.save_char_info(data_stream, obj_info, save_version)
-                elif obj_info["type"] == 1:  # OIItemInfo
-                    KoikatuSceneObjectLoader.save_item_info(data_stream, obj_info, save_version)
-                elif obj_info["type"] == 2:  # OILightInfo
-                    KoikatuSceneObjectLoader.save_light_info(data_stream, obj_info, save_version)
-                elif obj_info["type"] == 3:  # OIFolderInfo
-                    KoikatuSceneObjectLoader.save_folder_info(data_stream, obj_info, save_version)
-                elif obj_info["type"] == 4:  # OIRouteInfo
-                    KoikatuSceneObjectLoader.save_route_info(data_stream, obj_info, save_version)
-                elif obj_info["type"] == 5:  # OICameraInfo
-                    KoikatuSceneObjectLoader.save_camera_info(data_stream, obj_info, save_version)
-                elif obj_info["type"] == 7:  # OITextInfo
-                    KoikatuSceneObjectLoader.save_text_info(data_stream, obj_info, save_version)
-                else:
-                    raise ValueError(f"Unknown object type:{obj_info['type']}")
-            except NotImplementedError as e:
-                # 実装されていない関数が呼ばれた場合は、エラーを発生させる
-                raise NotImplementedError(f"Cannot save object of type {obj_info['type']}: {str(e)}")
-
-        # Write map info
-        data_stream.write(struct.pack("i", self.map))
-
-        # Write caMap (ChangeAmount)
-        self._save_change_amount(data_stream)
-
-        # Write sunLightType
-        data_stream.write(struct.pack("i", self.sunLightType))
-
-        # Write mapOption
-        data_stream.write(struct.pack("b", int(self.mapOption)))
-
-        # Write aceNo
-        data_stream.write(struct.pack("i", self.aceNo))
-
-        # Write aceBlend
-        data_stream.write(struct.pack("f", self.aceBlend))
-
-        # Write AOE settings
-        data_stream.write(struct.pack("b", int(self.enableAOE)))
-        aoe_color_bytes = json.dumps(self.aoeColor, separators=(',', ':')).encode("utf-8")
-        data_stream.write(struct.pack("b", len(aoe_color_bytes)))
-        data_stream.write(aoe_color_bytes)
-        data_stream.write(struct.pack("f", self.aoeRadius))
-
-        # Write bloom settings
-        data_stream.write(struct.pack("b", int(self.enableBloom)))
-        data_stream.write(struct.pack("f", self.bloomIntensity))
-        data_stream.write(struct.pack("f", self.bloomBlur))
-        data_stream.write(struct.pack("f", self.bloomThreshold))
-
-        # Write depth settings
-        data_stream.write(struct.pack("b", int(self.enableDepth)))
-        data_stream.write(struct.pack("f", self.depthFocalSize))
-        data_stream.write(struct.pack("f", self.depthAperture))
-
-        # Write vignette settings
-        data_stream.write(struct.pack("b", int(self.enableVignette)))
-
-        # Write fog settings
-        data_stream.write(struct.pack("b", int(self.enableFog)))
-        fog_color_bytes = json.dumps(self.fogColor, separators=(',', ':')).encode("utf-8")
-        data_stream.write(struct.pack("b", len(fog_color_bytes)))
-        data_stream.write(fog_color_bytes)
-        data_stream.write(struct.pack("f", self.fogHeight))
-        data_stream.write(struct.pack("f", self.fogStartDistance))
-
-        # Write sun shafts settings
-        data_stream.write(struct.pack("b", int(self.enableSunShafts)))
-        sun_threshold_color_bytes = json.dumps(self.sunThresholdColor, separators=(',', ':')).encode("utf-8")
-        data_stream.write(struct.pack("b", len(sun_threshold_color_bytes)))
-        data_stream.write(sun_threshold_color_bytes)
-        sun_color_bytes = json.dumps(self.sunColor, separators=(',', ':')).encode("utf-8")
-        data_stream.write(struct.pack("b", len(sun_color_bytes)))
-        data_stream.write(sun_color_bytes)
-
-        # Write sunCaster
-        data_stream.write(struct.pack("i", self.sunCaster))
-
-        # Write enableShadow
-        data_stream.write(struct.pack("b", int(self.enableShadow)))
-
-        # Write face settings
-        data_stream.write(struct.pack("b", int(self.faceNormal)))
-        data_stream.write(struct.pack("b", int(self.faceShadow)))
-        data_stream.write(struct.pack("f", self.lineColorG))
-        ambient_shadow_bytes = json.dumps(self.ambientShadow, separators=(',', ':')).encode("utf-8")
-        data_stream.write(struct.pack("b", len(ambient_shadow_bytes)))
-        data_stream.write(ambient_shadow_bytes)
-
-        # Write additional face settings
-        data_stream.write(struct.pack("f", self.lineWidthG))
-        data_stream.write(struct.pack("i", self.rampG))
-        data_stream.write(struct.pack("f", self.ambientShadowG))
-
-        # Write shaderType
-        data_stream.write(struct.pack("i", self.shaderType))
-
-        # Write skyInfo
-        sky_info_bytes, sky_info_len = msg_pack(self.skyInfo)
-        data_stream.write(struct.pack("i", sky_info_len))
-        data_stream.write(sky_info_bytes)
-
-        # Write camera data
-        self._save_camera_data(data_stream, self.cameraSaveData)
-
-        # Write camera array data
-        for camera in self.cameraData:
-            self._save_camera_data(data_stream, camera)
-
-        # Write light settings
-        self._save_chara_light(data_stream, self.charaLight)
-        self._save_map_light(data_stream, self.mapLight)
-
-        # Write BGM, ENV, and outside sound settings
-        self._save_bgm_ctrl(data_stream, self.bgmCtrl)
-        self._save_env_ctrl(data_stream, self.envCtrl)
-        self._save_outside_sound_ctrl(data_stream, self.outsideSoundCtrl)
-
-        # Write background and frame
-        background_bytes = self.background.encode("utf-8")
-        data_stream.write(struct.pack("b", len(background_bytes)))
-        data_stream.write(background_bytes)
-        frame_bytes = self.frame.encode("utf-8")
-        data_stream.write(struct.pack("b", len(frame_bytes)))
-        data_stream.write(frame_bytes)
-
-        return data_stream.getvalue()
+    All methods correspond to C# serialization classes in Studio.
+    """
 
     def _save_change_amount(self, data_stream):
         """
@@ -648,41 +684,15 @@ class KoikatuSceneData:
         Save character light data
         Based on CameraLightCtrl.LightInfo.Save in C#
         """
-
-        # Write color (JSON string)
-        color_bytes = json.dumps(light_data["color"], separators=(',', ':')).encode("utf-8")
-        self._write_string(data_stream, color_bytes)
-
-        # Write intensity (float)
-        data_stream.write(struct.pack("f", light_data["intensity"]))
-
-        # Write rotation (2 floats)
-        data_stream.write(struct.pack("f", light_data["rot"][0]))
-        data_stream.write(struct.pack("f", light_data["rot"][1]))
-
-        # Write shadow (boolean)
-        data_stream.write(struct.pack("b", int(light_data["shadow"])))
+        KoikatuSceneObjectLoader._save_light_info_base(data_stream, light_data)
 
     def _save_map_light(self, data_stream, light_data):
         """
         Save map light data
         Based on CameraLightCtrl.MapLightInfo.Save in C#
         """
-
         # First save base LightInfo data
-        # Write color (JSON string)
-        color_bytes = json.dumps(light_data["color"], separators=(',', ':')).encode("utf-8")
-        self._write_string(data_stream, color_bytes)
-
-        # Write intensity (float)
-        data_stream.write(struct.pack("f", light_data["intensity"]))
-
-        # Write rotation (2 floats)
-        data_stream.write(struct.pack("f", light_data["rot"][0]))
-        data_stream.write(struct.pack("f", light_data["rot"][1]))
-
-        # Write shadow (boolean)
-        data_stream.write(struct.pack("b", int(light_data["shadow"])))
+        KoikatuSceneObjectLoader._save_light_info_base(data_stream, light_data)
 
         # Write MapLightInfo specific data
         # Write light type (int)
@@ -726,62 +736,30 @@ class KoikatuSceneData:
 
         # Write file name (string)
         file_name_bytes = sound_data["fileName"].encode("utf-8")
-        self._write_string(data_stream, file_name_bytes)
+        write_string(data_stream, file_name_bytes)
 
         # Write play state (boolean)
         data_stream.write(struct.pack("b", int(sound_data["play"])))
 
-    def _write_string(self, data_stream, value):
-        """
-        Write a string to the data stream using the same format as load_string
-        Using write_string from funcs.py
-        """
-        write_string(data_stream, value)
+    # ============================================================
+    # 6. UTILITY METHODS
+    # ============================================================
+    """
+    General utility methods.
 
-    def to_dict(self):
-        """Convert the scene data to a dictionary"""
-        return {
-            "version": self.version,
-            "dataVersion": self.dataVersion,
-            "map": self.map,
-            "sunLightType": self.sunLightType,
-            "mapOption": self.mapOption,
-            "aceNo": self.aceNo,
-            "aceBlend": self.aceBlend,
-            "enableAOE": self.enableAOE,
-            "aoeColor": self.aoeColor,
-            "aoeRadius": self.aoeRadius,
-            "enableBloom": self.enableBloom,
-            "bloomIntensity": self.bloomIntensity,
-            "bloomBlur": self.bloomBlur,
-            "bloomThreshold": self.bloomThreshold,
-            "enableDepth": self.enableDepth,
-            "depthFocalSize": self.depthFocalSize,
-            "depthAperture": self.depthAperture,
-            "enableVignette": self.enableVignette,
-            "enableFog": self.enableFog,
-            "fogColor": self.fogColor,
-            "fogHeight": self.fogHeight,
-            "fogStartDistance": self.fogStartDistance,
-            "enableSunShafts": self.enableSunShafts,
-            "sunThresholdColor": self.sunThresholdColor,
-            "sunColor": self.sunColor,
-            "sunCaster": self.sunCaster,
-            "enableShadow": self.enableShadow,
-            "faceNormal": self.faceNormal,
-            "faceShadow": self.faceShadow,
-            "lineColorG": self.lineColorG,
-            "ambientShadow": self.ambientShadow,
-            "lineWidthG": self.lineWidthG,
-            "rampG": self.rampG,
-            "ambientShadowG": self.ambientShadowG,
-            "shaderType": self.shaderType,
-            "skyInfo": self.skyInfo,
-            "background": self.background,
-            "frame": self.frame,
-            "objectCount": len(self.dicObject),
-        }
+    - _parse_color_json: Parse JSON color strings to dictionaries
+    - _compare_versions: Compare version strings for compatibility checks
 
-    def __str__(self):
-        """String representation of the scene data"""
-        return f"KoikatuSceneData(version={self.version}, objects={len(self.dicObject)})"
+    These methods delegate to KoikatuSceneObjectLoader for consistency
+    across the codebase.
+    """
+
+    @staticmethod
+    def _parse_color_json(json_str):
+        """Parse color from JSON string"""
+        return KoikatuSceneObjectLoader.parse_color_json(json_str)
+
+    @staticmethod
+    def _compare_versions(version1, version2):
+        """Delegate to KoikatuSceneObjectLoader for consistency"""
+        return KoikatuSceneObjectLoader._compare_versions(version1, version2)

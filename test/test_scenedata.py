@@ -1,7 +1,5 @@
 import tempfile
 
-import pytest
-
 from kkloader import KoikatuSceneData
 
 
@@ -243,8 +241,7 @@ def test_save_scene():
                 v1 = data1[field]
                 v2 = data2[field]
                 for axis in ["x", "y", "z"]:
-                    assert abs(v1.get(axis, 0.0) - v2.get(axis, 0.0)) < 1e-6, \
-                        f"Object {key} {field}.{axis} mismatch: {v1.get(axis)} vs {v2.get(axis)}"
+                    assert abs(v1.get(axis, 0.0) - v2.get(axis, 0.0)) < 1e-6, f"Object {key} {field}.{axis} mismatch: {v1.get(axis)} vs {v2.get(axis)}"
 
     # Check that scene metadata is preserved
     assert scene_data.sunLightType == scene_data2.sunLightType
@@ -300,8 +297,7 @@ def test_save_complex_scene():
                 v1 = data1[field]
                 v2 = data2[field]
                 for axis in ["x", "y", "z"]:
-                    assert abs(v1.get(axis, 0.0) - v2.get(axis, 0.0)) < 1e-6, \
-                        f"Object {key} {field}.{axis} mismatch: {v1.get(axis)} vs {v2.get(axis)}"
+                    assert abs(v1.get(axis, 0.0) - v2.get(axis, 0.0)) < 1e-6, f"Object {key} {field}.{axis} mismatch: {v1.get(axis)} vs {v2.get(axis)}"
 
     # Check that scene metadata is preserved
     assert scene_data.sunLightType == scene_data2.sunLightType

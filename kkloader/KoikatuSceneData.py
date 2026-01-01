@@ -465,8 +465,9 @@ class KoikatuSceneData:
         if self.image:
             data_stream.write(self.image)
 
-        # Write version
-        version_bytes = self.version.encode("utf-8")
+        # Write version (always save with latest version like C# does with m_Version = 1.1.2.1)
+        save_version = "1.1.2.1"
+        version_bytes = save_version.encode("utf-8")
         data_stream.write(struct.pack("b", len(version_bytes)))
         data_stream.write(version_bytes)
 
@@ -476,22 +477,22 @@ class KoikatuSceneData:
             data_stream.write(struct.pack("i", key))
             data_stream.write(struct.pack("i", obj_info["type"]))
 
-            # Save object data based on type
+            # Save object data based on type (using save_version, not self.version)
             try:
                 if obj_info["type"] == 0:  # OICharInfo
-                    KoikatuSceneObjectLoader.save_char_info(data_stream, obj_info)
+                    KoikatuSceneObjectLoader.save_char_info(data_stream, obj_info, save_version)
                 elif obj_info["type"] == 1:  # OIItemInfo
-                    KoikatuSceneObjectLoader.save_item_info(data_stream, obj_info)
+                    KoikatuSceneObjectLoader.save_item_info(data_stream, obj_info, save_version)
                 elif obj_info["type"] == 2:  # OILightInfo
-                    KoikatuSceneObjectLoader.save_light_info(data_stream, obj_info)
+                    KoikatuSceneObjectLoader.save_light_info(data_stream, obj_info, save_version)
                 elif obj_info["type"] == 3:  # OIFolderInfo
-                    KoikatuSceneObjectLoader.save_folder_info(data_stream, obj_info)
+                    KoikatuSceneObjectLoader.save_folder_info(data_stream, obj_info, save_version)
                 elif obj_info["type"] == 4:  # OIRouteInfo
-                    KoikatuSceneObjectLoader.save_route_info(data_stream, obj_info)
+                    KoikatuSceneObjectLoader.save_route_info(data_stream, obj_info, save_version)
                 elif obj_info["type"] == 5:  # OICameraInfo
-                    KoikatuSceneObjectLoader.save_camera_info(data_stream, obj_info)
+                    KoikatuSceneObjectLoader.save_camera_info(data_stream, obj_info, save_version)
                 elif obj_info["type"] == 7:  # OITextInfo
-                    KoikatuSceneObjectLoader.save_text_info(data_stream, obj_info)
+                    KoikatuSceneObjectLoader.save_text_info(data_stream, obj_info, save_version)
                 else:
                     raise ValueError(f"Unknown object type:{obj_info['type']}")
             except NotImplementedError as e:
@@ -518,7 +519,7 @@ class KoikatuSceneData:
 
         # Write AOE settings
         data_stream.write(struct.pack("b", int(self.enableAOE)))
-        aoe_color_bytes = json.dumps(self.aoeColor).encode("utf-8")
+        aoe_color_bytes = json.dumps(self.aoeColor, separators=(',', ':')).encode("utf-8")
         data_stream.write(struct.pack("b", len(aoe_color_bytes)))
         data_stream.write(aoe_color_bytes)
         data_stream.write(struct.pack("f", self.aoeRadius))
@@ -539,7 +540,7 @@ class KoikatuSceneData:
 
         # Write fog settings
         data_stream.write(struct.pack("b", int(self.enableFog)))
-        fog_color_bytes = json.dumps(self.fogColor).encode("utf-8")
+        fog_color_bytes = json.dumps(self.fogColor, separators=(',', ':')).encode("utf-8")
         data_stream.write(struct.pack("b", len(fog_color_bytes)))
         data_stream.write(fog_color_bytes)
         data_stream.write(struct.pack("f", self.fogHeight))
@@ -547,10 +548,10 @@ class KoikatuSceneData:
 
         # Write sun shafts settings
         data_stream.write(struct.pack("b", int(self.enableSunShafts)))
-        sun_threshold_color_bytes = json.dumps(self.sunThresholdColor).encode("utf-8")
+        sun_threshold_color_bytes = json.dumps(self.sunThresholdColor, separators=(',', ':')).encode("utf-8")
         data_stream.write(struct.pack("b", len(sun_threshold_color_bytes)))
         data_stream.write(sun_threshold_color_bytes)
-        sun_color_bytes = json.dumps(self.sunColor).encode("utf-8")
+        sun_color_bytes = json.dumps(self.sunColor, separators=(',', ':')).encode("utf-8")
         data_stream.write(struct.pack("b", len(sun_color_bytes)))
         data_stream.write(sun_color_bytes)
 
@@ -564,7 +565,7 @@ class KoikatuSceneData:
         data_stream.write(struct.pack("b", int(self.faceNormal)))
         data_stream.write(struct.pack("b", int(self.faceShadow)))
         data_stream.write(struct.pack("f", self.lineColorG))
-        ambient_shadow_bytes = json.dumps(self.ambientShadow).encode("utf-8")
+        ambient_shadow_bytes = json.dumps(self.ambientShadow, separators=(',', ':')).encode("utf-8")
         data_stream.write(struct.pack("b", len(ambient_shadow_bytes)))
         data_stream.write(ambient_shadow_bytes)
 
@@ -649,7 +650,7 @@ class KoikatuSceneData:
         """
 
         # Write color (JSON string)
-        color_bytes = json.dumps(light_data["color"]).encode("utf-8")
+        color_bytes = json.dumps(light_data["color"], separators=(',', ':')).encode("utf-8")
         self._write_string(data_stream, color_bytes)
 
         # Write intensity (float)
@@ -670,7 +671,7 @@ class KoikatuSceneData:
 
         # First save base LightInfo data
         # Write color (JSON string)
-        color_bytes = json.dumps(light_data["color"]).encode("utf-8")
+        color_bytes = json.dumps(light_data["color"], separators=(',', ':')).encode("utf-8")
         self._write_string(data_stream, color_bytes)
 
         # Write intensity (float)

@@ -1,5 +1,3 @@
-# -*- coding:utf-8 -*-
-
 import json
 import struct
 from typing import Any, BinaryIO, Dict

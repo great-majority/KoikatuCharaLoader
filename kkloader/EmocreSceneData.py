@@ -1,5 +1,3 @@
-# -*- coding:utf-8 -*-
-
 import io
 
 from kkloader.EmocreCharaData import EmocreCharaData

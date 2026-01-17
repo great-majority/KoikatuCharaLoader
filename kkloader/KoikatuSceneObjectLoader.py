@@ -55,8 +55,7 @@ class KoikatuSceneObjectLoader:
         """Dispatch to appropriate load method based on object type"""
         method_name = KoikatuSceneObjectLoader._LOAD_DISPATCH.get(obj_type)
         if method_name is None:
-            print(f"Warning: Unknown object type {obj_type}")
-            return
+            raise ValueError(f"Unknown object type: {obj_type}")
         method = getattr(KoikatuSceneObjectLoader, method_name)
         method(data_stream, obj_info, version)
 
@@ -324,7 +323,7 @@ class KoikatuSceneObjectLoader:
         return route_point
 
     @staticmethod
-    def _save_route_point_info(data_stream: BinaryIO, route_point: Dict[str, Any]) -> None:
+    def _save_route_point_info(data_stream: BinaryIO, route_point: Dict[str, Any], version: str = None) -> None:
         """
         Save OIRoutePointInfo data
         Based on OIRoutePointInfo.Save in C#
@@ -344,15 +343,22 @@ class KoikatuSceneObjectLoader:
         # Write easeType
         data_stream.write(struct.pack("i", route_point.get("easeType", 0)))
 
-        # Write connection
-        data_stream.write(struct.pack("i", route_point.get("connection", 0)))
+        # Version 1.0.3 only: write a dummy boolean (to match load which discards it)
+        if KoikatuSceneObjectLoader._compare_versions(version, "1.0.3") == 0:
+            data_stream.write(struct.pack("b", 0))
 
-        # Write aidInfo
-        aid_info = route_point.get("aidInfo", {})
-        KoikatuSceneObjectLoader._save_route_point_aid_info(data_stream, aid_info)
+        # Write connection (version >= 1.0.4.1)
+        if KoikatuSceneObjectLoader._compare_versions(version, "1.0.4.1") >= 0:
+            data_stream.write(struct.pack("i", route_point.get("connection", 0)))
 
-        # Write link
-        data_stream.write(struct.pack("b", int(route_point.get("link", False))))
+        # Write aidInfo (version >= 1.0.4.1)
+        if KoikatuSceneObjectLoader._compare_versions(version, "1.0.4.1") >= 0:
+            aid_info = route_point.get("aidInfo", {})
+            KoikatuSceneObjectLoader._save_route_point_aid_info(data_stream, aid_info)
+
+        # Write link (version >= 1.0.4.2)
+        if KoikatuSceneObjectLoader._compare_versions(version, "1.0.4.2") >= 0:
+            data_stream.write(struct.pack("b", int(route_point.get("link", False))))
 
     @staticmethod
     def _load_route_point_aid_info(data_stream: BinaryIO) -> Dict[str, Any]:
@@ -1064,10 +1070,8 @@ class KoikatuSceneObjectLoader:
 
         # Write bones data
         for bone_key, bone_data in data["bones"].items():
-            # Write bone key
-            bone_key_bytes = bone_key.encode("utf-8")
-            data_stream.write(struct.pack("i", len(bone_key_bytes)))
-            data_stream.write(bone_key_bytes)
+            # Write bone key (using 7-bit encoded length like load_string)
+            write_string(data_stream, bone_key.encode("utf-8"))
 
             # Write bone data
             KoikatuSceneObjectLoader.save_bone_info(data_stream, bone_data)
@@ -1154,23 +1158,26 @@ class KoikatuSceneObjectLoader:
         for child in child_list:
             KoikatuSceneObjectLoader.save_child_objects(data_stream, child, version)
 
-        # Write route count and route points
-        route_list = data.get("route", [])
-        data_stream.write(struct.pack("i", len(route_list)))
-        for route_point in route_list:
-            KoikatuSceneObjectLoader._save_route_point_info(data_stream, route_point)
+        # Write route points count and route points
+        route_points = data.get("route_points", [])
+        data_stream.write(struct.pack("i", len(route_points)))
+        for route_point in route_points:
+            KoikatuSceneObjectLoader._save_route_point_info(data_stream, route_point, version)
 
-        # Write active, loop, visibleLine
-        data_stream.write(struct.pack("b", int(data.get("active", False))))
-        data_stream.write(struct.pack("b", int(data.get("loop", True))))
-        data_stream.write(struct.pack("b", int(data.get("visibleLine", True))))
+        # Write active, loop, visibleLine (version >= 1.0.3)
+        if KoikatuSceneObjectLoader._compare_versions(version, "1.0.3") >= 0:
+            data_stream.write(struct.pack("b", int(data.get("active", False))))
+            data_stream.write(struct.pack("b", int(data.get("loop", True))))
+            data_stream.write(struct.pack("b", int(data.get("visibleLine", True))))
 
-        # Write orient (enum as int)
-        data_stream.write(struct.pack("i", data.get("orient", 0)))
+        # Write orient (version >= 1.0.4)
+        if KoikatuSceneObjectLoader._compare_versions(version, "1.0.4") >= 0:
+            data_stream.write(struct.pack("i", data.get("orient", 0)))
 
-        # Write color as JSON string
-        color = data.get("color", {"r": 0.0, "g": 0.0, "b": 1.0, "a": 1.0})
-        KoikatuSceneObjectLoader._save_color_json(data_stream, color)
+        # Write color as JSON string (version >= 1.0.4.1)
+        if KoikatuSceneObjectLoader._compare_versions(version, "1.0.4.1") >= 0:
+            color = data.get("color", {"r": 0.0, "g": 0.0, "b": 1.0, "a": 1.0})
+            KoikatuSceneObjectLoader._save_color_json(data_stream, color)
 
     @staticmethod
     def save_camera_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:

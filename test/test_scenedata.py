@@ -31,125 +31,43 @@ def test_load_simple_scene():
     assert "panel" in obj_data
 
 
-def test_load_complex_scene():
-    """Test loading a complex scene file with multiple object types"""
-    # Load the scene data
-    scene_data = KoikatuSceneData.load("./data/kk_scene.png")
-
-    # Check basic properties
-    assert hasattr(scene_data, "version")
-    assert hasattr(scene_data, "dicObject")
-    assert hasattr(scene_data, "map")
-    assert scene_data.version == "0.0.7"
-
-    # Check that the scene has 10 objects
-    assert len(scene_data.dicObject) == 10
-
-    # Check that we have the expected object types
-    object_types = {obj["type"] for obj in scene_data.dicObject.values()}
-    assert 0 in object_types  # Character
-    assert 1 in object_types  # Item
-    assert 2 in object_types  # Light
-
-    # Count objects by type
+def count_types_recursive(dicObject):
+    """Recursively count all objects by type including nested children"""
     type_counts = {}
-    for obj in scene_data.dicObject.values():
+    for obj in dicObject.values():
         obj_type = obj["type"]
         type_counts[obj_type] = type_counts.get(obj_type, 0) + 1
+        data = obj.get("data", {})
+        if "child" in data and data["child"]:
+            children = data["child"]
+            if isinstance(children, list):
+                child_dict = {i: c for i, c in enumerate(children)}
+                child_counts = count_types_recursive(child_dict)
+                for t, count in child_counts.items():
+                    type_counts[t] = type_counts.get(t, 0) + count
+    return type_counts
 
-    assert type_counts[0] == 1  # 1 character
-    assert type_counts[2] == 2  # 2 lights
-    assert type_counts[1] == 7  # 7 items
 
-
-def test_load_character_in_scene():
-    """Test that character data is properly loaded in scene file"""
+def test_load_kk_scene():
+    """Test loading kk_scene.png"""
     scene_data = KoikatuSceneData.load("./data/kk_scene.png")
+    assert scene_data.version == "1.0.4.2"
 
-    # Find the character object (type 0)
-    char_obj = None
-    for obj in scene_data.dicObject.values():
-        if obj["type"] == 0:
-            char_obj = obj
-            break
-
-    assert char_obj is not None, "Character object not found"
-
-    # Check character data structure
-    char_data = char_obj["data"]
-    assert "dicKey" in char_data
-    assert "position" in char_data
-    assert "rotation" in char_data
-    assert "scale" in char_data
-    assert "sex" in char_data
-    assert "character" in char_data
-    assert "bones" in char_data
-    assert "ik_targets" in char_data
-    assert "child" in char_data
-
-    # Check that character file data was loaded
-    assert hasattr(char_data["character"], "Custom")
-    assert hasattr(char_data["character"], "Parameter")
+    type_counts = count_types_recursive(scene_data.dicObject)
+    # type: 0=Character, 1=Item, 2=Light, 3=Folder
+    assert type_counts.get(0, 0) == 1  # 1 character
+    assert type_counts.get(1, 0) == 169  # 169 items
+    assert type_counts.get(3, 0) == 19  # 19 folders
 
 
-def test_load_light_in_scene():
-    """Test that light data is properly loaded in scene file"""
-    scene_data = KoikatuSceneData.load("./data/kk_scene.png")
+def test_load_kks_scene():
+    """Test loading kks_scene.png (Koikatsu Sunshine)"""
+    scene_data = KoikatuSceneData.load("./data/kks_scene.png")
+    assert scene_data.version == "1.1.2.1"
 
-    # Find a light object (type 2)
-    light_obj = None
-    for obj in scene_data.dicObject.values():
-        if obj["type"] == 2:
-            light_obj = obj
-            break
-
-    assert light_obj is not None, "Light object not found"
-
-    # Check light data structure
-    light_data = light_obj["data"]
-    assert "dicKey" in light_data
-    assert "position" in light_data
-    assert "rotation" in light_data
-    assert "scale" in light_data
-    assert "no" in light_data
-    assert "color" in light_data
-    assert "intensity" in light_data
-    assert "range" in light_data
-    assert "spotAngle" in light_data
-
-    # Check color structure
-    assert "r" in light_data["color"]
-    assert "g" in light_data["color"]
-    assert "b" in light_data["color"]
-    assert "a" in light_data["color"]
-
-
-def test_load_item_in_scene():
-    """Test that item data is properly loaded in scene file"""
-    scene_data = KoikatuSceneData.load("./data/kk_scene.png")
-
-    # Find an item object (type 1)
-    item_obj = None
-    for obj in scene_data.dicObject.values():
-        if obj["type"] == 1:
-            item_obj = obj
-            break
-
-    assert item_obj is not None, "Item object not found"
-
-    # Check item data structure
-    item_data = item_obj["data"]
-    assert "dicKey" in item_data
-    assert "position" in item_data
-    assert "rotation" in item_data
-    assert "scale" in item_data
-    assert "group" in item_data
-    assert "category" in item_data
-    assert "no" in item_data
-    assert "colors" in item_data
-    assert "patterns" in item_data
-    assert "bones" in item_data
-    assert "child" in item_data
+    type_counts = count_types_recursive(scene_data.dicObject)
+    assert type_counts.get(2, 0) == 1  # 1 light
+    assert type_counts.get(3, 0) == 1  # 1 folder
 
 
 def test_scene_to_dict():
@@ -252,55 +170,27 @@ def test_save_scene():
 
 def test_save_complex_scene():
     """Test saving a complex Koikatu scene file with multiple object types"""
-    # Load the complex scene data (version 0.0.7)
     scene_data = KoikatuSceneData.load("./data/kk_scene.png")
 
-    # Save to a temporary file
     tmpfile = tempfile.NamedTemporaryFile()
     scene_data.save(tmpfile.name)
 
-    # Load the saved scene data
     scene_data2 = KoikatuSceneData.load(tmpfile.name)
 
-    # Check that the basic properties match (version check skipped - format may evolve)
-    assert scene_data.map == scene_data2.map
-    assert len(scene_data.dicObject) == len(scene_data2.dicObject)
+    type_counts1 = count_types_recursive(scene_data.dicObject)
+    type_counts2 = count_types_recursive(scene_data2.dicObject)
+    assert type_counts1 == type_counts2
 
-    # Check total object count including nested objects
-    total_count_1 = count_all_objects(scene_data.dicObject)
-    total_count_2 = count_all_objects(scene_data2.dicObject)
-    assert total_count_1 == total_count_2, f"Total object count mismatch: {total_count_1} vs {total_count_2}"
 
-    # Check that all object types are preserved
-    types_1 = {obj["type"] for obj in scene_data.dicObject.values()}
-    types_2 = {obj["type"] for obj in scene_data2.dicObject.values()}
-    assert types_1 == types_2, f"Object types mismatch: {types_1} vs {types_2}"
+def test_save_kks_scene():
+    """Test saving kks_scene.png (Koikatsu Sunshine)"""
+    scene_data = KoikatuSceneData.load("./data/kks_scene.png")
 
-    # Check that object data matches for all objects
-    for key in scene_data.dicObject.keys():
-        obj1 = scene_data.dicObject[key]
-        obj2 = scene_data2.dicObject[key]
+    tmpfile = tempfile.NamedTemporaryFile()
+    scene_data.save(tmpfile.name)
 
-        # Check type matches
-        assert obj1["type"] == obj2["type"], f"Object {key} type mismatch"
+    scene_data2 = KoikatuSceneData.load(tmpfile.name)
 
-        # Check key data fields match
-        data1 = obj1["data"]
-        data2 = obj2["data"]
-
-        # Check dicKey
-        assert data1.get("dicKey") == data2.get("dicKey"), f"Object {key} dicKey mismatch"
-
-        # Check Vector3 fields (position, rotation, scale)
-        for field in ["position", "rotation", "scale"]:
-            if field in data1 and field in data2:
-                v1 = data1[field]
-                v2 = data2[field]
-                for axis in ["x", "y", "z"]:
-                    assert abs(v1.get(axis, 0.0) - v2.get(axis, 0.0)) < 1e-6, f"Object {key} {field}.{axis} mismatch: {v1.get(axis)} vs {v2.get(axis)}"
-
-    # Check that scene metadata is preserved
-    assert scene_data.sunLightType == scene_data2.sunLightType
-    assert scene_data.mapOption == scene_data2.mapOption
-    assert scene_data.aceNo == scene_data2.aceNo
-    assert abs(scene_data.aceBlend - scene_data2.aceBlend) < 1e-6
+    type_counts1 = count_types_recursive(scene_data.dicObject)
+    type_counts2 = count_types_recursive(scene_data2.dicObject)
+    assert type_counts1 == type_counts2

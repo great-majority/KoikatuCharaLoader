@@ -60,6 +60,19 @@ def test_load_kk_scene():
     assert type_counts.get(3, 0) == 19  # 19 folders
 
 
+def test_load_kk_scene_mod():
+    """Test loading kk_scene_mod.png"""
+    scene_data = KoikatuSceneData.load("./data/kk_scene_mod.png")
+    assert scene_data.version == "1.1.2.1"
+
+    type_counts = count_types_recursive(scene_data.dicObject)
+    # type: 0=Character, 1=Item, 2=Light, 3=Folder
+    assert type_counts.get(0, 0) == 1  # 1 character
+    assert type_counts.get(1, 0) == 201  # 201 items
+    assert type_counts.get(2, 0) == 1  # 1 light
+    assert type_counts.get(3, 0) == 202  # 202 folders
+
+
 def test_load_kks_scene():
     """Test loading kks_scene.png (Koikatsu Sunshine)"""
     scene_data = KoikatuSceneData.load("./data/kks_scene.png")
@@ -171,6 +184,20 @@ def test_save_scene():
 def test_save_complex_scene():
     """Test saving a complex Koikatu scene file with multiple object types"""
     scene_data = KoikatuSceneData.load("./data/kk_scene.png")
+
+    tmpfile = tempfile.NamedTemporaryFile()
+    scene_data.save(tmpfile.name)
+
+    scene_data2 = KoikatuSceneData.load(tmpfile.name)
+
+    type_counts1 = count_types_recursive(scene_data.dicObject)
+    type_counts2 = count_types_recursive(scene_data2.dicObject)
+    assert type_counts1 == type_counts2
+
+
+def test_save_kk_scene_mod():
+    """Test saving kk_scene_mod.png"""
+    scene_data = KoikatuSceneData.load("./data/kk_scene_mod.png")
 
     tmpfile = tempfile.NamedTemporaryFile()
     scene_data.save(tmpfile.name)

@@ -243,6 +243,19 @@ class KoikatuSceneData:
         ks.background = load_length(data_stream, "b").decode("utf-8")
         ks.frame = load_length(data_stream, "b").decode("utf-8")
 
+        # 【KStudio】
+        ks.tail = load_string(data_stream).decode("utf-8")
+        assert ks.tail == "【KStudio】"
+
+        # Mod-related data follows.
+        mods_data = data_stream.read()
+        if len(mods_data) != 0:
+            mod_data_stream = io.BytesIO(mods_data)
+            ks.mod_header = load_length(mod_data_stream, "b").decode("utf-8")
+            ks.mod_unknown = load_type(mod_data_stream, "i")  # 3
+            ks.mod_data = msg_unpack(load_length(mod_data_stream, "i"))
+            ks.mod_tail = mod_data_stream.read()  # this is usually empty.
+
         return ks
 
     # ============================================================
@@ -412,6 +425,22 @@ class KoikatuSceneData:
         frame_bytes = self.frame.encode("utf-8")
         data_stream.write(struct.pack("b", len(frame_bytes)))
         data_stream.write(frame_bytes)
+
+        tail_bytes = self.tail.encode("utf-8")
+        data_stream.write(struct.pack("b", len(tail_bytes)))
+        data_stream.write(tail_bytes)
+
+        # Write mod-related data if present
+        if hasattr(self, "mod_header") and self.mod_header:
+            mod_header_bytes = self.mod_header.encode("utf-8")
+            data_stream.write(struct.pack("b", len(mod_header_bytes)))
+            data_stream.write(mod_header_bytes)
+            data_stream.write(struct.pack("i", self.mod_unknown))
+            mod_data_bytes, mod_data_len = msg_pack(self.mod_data)
+            data_stream.write(struct.pack("i", mod_data_len))
+            data_stream.write(mod_data_bytes)
+            if hasattr(self, "mod_tail") and self.mod_tail:
+                data_stream.write(self.mod_tail)
 
         return data_stream.getvalue()
 

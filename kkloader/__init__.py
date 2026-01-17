@@ -7,7 +7,9 @@ from .KoikatuCharaData import (  # noqa isort: skip
     KKEx as kk_KKEx,
     KoikatuCharaData,
 )
+from .KoikatuCharaHeader import KoikatuCharaHeader  # noqa isort: skip
 from .KoikatuSaveData import KoikatuSaveData  # noqa isort: skip
+from .KoikatuSceneData import KoikatuSceneData  # noqa isort: skip
 from .EmocreCharaData import EmocreCharaData  # noqa
 from .EmocreMapData import EmocreMapData  # noqa
 from .EmocreSceneData import EmocreSceneData  # noqa

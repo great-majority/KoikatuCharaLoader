@@ -35,6 +35,7 @@ That's it! :)
 
 - Supports saving and loading:
   - `KoikatuCharaData`
+  - `KoikatuSceneData`
   - `EmocreCharaData`
   - `HoneycomeCharaData`
   - `SummerVacationCharaData`
@@ -185,6 +186,23 @@ kc.save("./data/kk_chara_modified.png")
 [`ec_to_kk.py`](https://github.com/great-majority/KoikatuCharaLoader/blob/master/samples/ec_to_kk.py) in the sample directory might be helpful.
 
 Using **[this web app](https://kk-snippets.streamlit.app/ec-to-kk)**, you can easily perform the conversion directly from your browser.
+
+### Load Scene Data
+```python
+from kkloader import KoikatuSceneData
+
+scene = KoikatuSceneData.load("./data/kk_scene.png")
+print(f"Version: {scene.version}")
+print(f"Object count: {len(scene.dicObject)}")
+
+# Iterate over objects in the scene
+for key, obj in scene.dicObject.items():
+    obj_type = obj["type"]  # 0=Character, 1=Item, 2=Light, 3=Folder
+    print(f"  Key: {key}, Type: {obj_type}")
+
+# Save modified scene
+scene.save("./data/kk_scene_modified.png")
+```
 
 ### Others
 

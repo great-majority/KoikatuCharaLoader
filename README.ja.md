@@ -33,6 +33,7 @@ $ python
 
 - 読み込みと書き込み両方に対応
   - `KoikatuCharaData`
+  - `KoikatuSceneData`
   - `EmocreCharaData`
   - `HoneycomeCharaData`
   - `SummerVacationCharaData`
@@ -186,6 +187,23 @@ kc.save("./data/kk_chara_modified.png")
 sampleフォルダにある [`ec_to_kk.py`](https://github.com/great-majority/KoikatuCharaLoader/blob/master/samples/ec_to_kk.py) が参考になると思います。
 
 ただこのプログラムが使いたいだけなのであれば、**[このサイト](https://kk-snippets.streamlit.app/ec-to-kk)** から同じ処理をブラウザ上で実行することができます。
+
+### シーンデータを読み込む
+```python
+from kkloader import KoikatuSceneData
+
+scene = KoikatuSceneData.load("./data/kk_scene.png")
+print(f"Version: {scene.version}")
+print(f"Object count: {len(scene.dicObject)}")
+
+# シーン内のオブジェクトを列挙
+for key, obj in scene.dicObject.items():
+    obj_type = obj["type"]  # 0=Character, 1=Item, 2=Light, 3=Folder
+    print(f"  Key: {key}, Type: {obj_type}")
+
+# 変更したシーンを保存
+scene.save("./data/kk_scene_modified.png")
+```
 
 ### その他
 

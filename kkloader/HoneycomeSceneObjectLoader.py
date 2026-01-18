@@ -244,11 +244,13 @@ class HoneycomeSceneObjectLoader:
         # Read key
         pattern_data["key"] = struct.unpack("i", data_stream.read(4))[0]
 
-        # Read clamp
-        pattern_data["clamp"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        if pattern_data["key"] == -1:
+            pattern_data["pattern_filepath"] = load_string(data_stream).decode("utf-8")
+            pattern_data["unknown_bool"] = bool(struct.unpack("b", data_stream.read(1))[0])
 
-        # Read unknown bool
-        pattern_data["unknown_bool"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        else:
+            pattern_data["clamp"] = bool(struct.unpack("b", data_stream.read(1))[0])
+            pattern_data["unknown_bool"] = bool(struct.unpack("b", data_stream.read(1))[0])
 
         # Read uv (Vector4)
         uv_json = load_string(data_stream).decode("utf-8")
@@ -265,11 +267,16 @@ class HoneycomeSceneObjectLoader:
         # Write key
         data_stream.write(struct.pack("i", pattern_data["key"]))
 
-        # Write clamp
-        data_stream.write(struct.pack("b", int(pattern_data["clamp"])))
-
-        # Write unknown bool
-        data_stream.write(struct.pack("b", int(pattern_data.get("unknown_bool", False))))
+        if pattern_data["key"] == -1:
+            # Write pattern_filepath
+            write_string(data_stream, pattern_data.get("pattern_filepath", "").encode("utf-8"))
+            # Write unknown bool
+            data_stream.write(struct.pack("b", int(pattern_data.get("unknown_bool", False))))
+        else:
+            # Write clamp
+            data_stream.write(struct.pack("b", int(pattern_data["clamp"])))
+            # Write unknown bool
+            data_stream.write(struct.pack("b", int(pattern_data.get("unknown_bool", False))))
 
         # Write uv (Vector4)
         write_string(data_stream, json.dumps(pattern_data["uv"], separators=(",", ":")).encode("utf-8"))
@@ -468,6 +475,8 @@ class HoneycomeSceneObjectLoader:
         # Read lip sync
         data["lip_sync"] = bool(struct.unpack("b", data_stream.read(1))[0])
 
+        data["unknown_bytes_1"] = data_stream.read(4)
+
         # Read look at target info (LookAtTargetInfo.Load)
         # base.Load with _other=false: only dicKey and changeAmount, no treeState/visible
         data["lookAtTarget"] = {
@@ -476,6 +485,8 @@ class HoneycomeSceneObjectLoader:
             "rotation": HoneycomeSceneObjectLoader._load_vector3(data_stream),
             "scale": HoneycomeSceneObjectLoader._load_vector3(data_stream),
         }
+
+        data["unknown_bytes_2"] = data_stream.read(14)
 
         # Read enable IK
         data["enable_ik"] = bool(struct.unpack("b", data_stream.read(1))[0])
@@ -489,8 +500,8 @@ class HoneycomeSceneObjectLoader:
         # Read active FK
         data["active_fk"] = HoneycomeSceneObjectLoader._load_bool_array(data_stream, 7)
 
-        # Read expression (4 for version < 0.0.9, 8 for version >= 0.0.9)
-        expression_count = 8 if HoneycomeSceneObjectLoader._compare_versions(version, "0.0.9") >= 0 else 4
+        # Read expression
+        expression_count = 9
         data["expression"] = HoneycomeSceneObjectLoader._load_bool_array(data_stream, expression_count)
 
         # Read anime speed
@@ -505,13 +516,16 @@ class HoneycomeSceneObjectLoader:
         # Read is anime force loop
         data["is_anime_force_loop"] = bool(struct.unpack("b", data_stream.read(1))[0])
 
+        data["unknown_int_1"] = struct.unpack("i", data_stream.read(4))[0]
+        data["unknown_int_2"] = struct.unpack("i", data_stream.read(4))[0]
+
         # Read voice ctrl (VoiceCtrl.Load)
         voice_list_count = struct.unpack("i", data_stream.read(4))[0]
         data["voiceCtrl"] = {"list": [], "repeat": None}
         for _ in range(voice_list_count):
             voice_info = {"group": struct.unpack("i", data_stream.read(4))[0], "category": struct.unpack("i", data_stream.read(4))[0], "no": struct.unpack("i", data_stream.read(4))[0]}
             data["voiceCtrl"]["list"].append(voice_info)
-        data["voiceCtrl"]["repeat"] = struct.unpack("i", data_stream.read(4))[0]
+        data["voiceCtrl"]["repeat"] = bool(struct.unpack("b", data_stream.read(1))[0])
 
         # Read visible son
         data["visible_son"] = bool(struct.unpack("b", data_stream.read(1))[0])
@@ -522,9 +536,6 @@ class HoneycomeSceneObjectLoader:
         # Read visible simple
         data["visible_simple"] = bool(struct.unpack("b", data_stream.read(1))[0])
 
-        # Read unknown bytes
-        data["unknown_bytes_1"] = data_stream.read(24)
-
         # Read simple color
         simple_color_json = load_length(data_stream, "b").decode("utf-8")
         data["simple_color"] = HoneycomeSceneObjectLoader.parse_color_json(simple_color_json)
@@ -533,7 +544,7 @@ class HoneycomeSceneObjectLoader:
         data["anime_option_param"] = [struct.unpack("f", data_stream.read(4))[0], struct.unpack("f", data_stream.read(4))[0]]
 
         # Read unknown int
-        data["unknown_int_1"] = struct.unpack("i", data_stream.read(4))[0]
+        data["unknown_int_3"] = struct.unpack("i", data_stream.read(4))[0]
 
         # Read neck byte data
         neck_data_length = struct.unpack("i", data_stream.read(4))[0]
@@ -616,15 +627,10 @@ class HoneycomeSceneObjectLoader:
             }
             data["line_width"] = 1.0
 
-        if HoneycomeSceneObjectLoader._compare_versions(version, "0.0.7") >= 0:
-            emission_color_json = load_string(data_stream).decode("utf-8")
-            data["emission_color"] = json.loads(emission_color_json)
-            data["emission_power"] = struct.unpack("f", data_stream.read(4))[0]
-            data["light_cancel"] = struct.unpack("f", data_stream.read(4))[0]
-        else:
-            data["emission_color"] = {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0}
-            data["emission_power"] = 0.0
-            data["light_cancel"] = 0.0
+        emission_color_json = load_string(data_stream).decode("utf-8")
+        data["emission_color"] = json.loads(emission_color_json)
+        data["emission_power"] = struct.unpack("f", data_stream.read(4))[0]
+        data["light_cancel"] = struct.unpack("f", data_stream.read(4))[0]
 
         data["unknown_7"] = data_stream.read(6)
         data["unknown_8"] = load_string(data_stream).decode("utf-8")
@@ -827,12 +833,18 @@ class HoneycomeSceneObjectLoader:
         # Write lip sync
         data_stream.write(struct.pack("b", int(data.get("lip_sync", True))))
 
+        # Write unknown bytes (4 bytes)
+        data_stream.write(data["unknown_bytes_1"])
+
         # Write look at target (LookAtTargetInfo.Save - base.Save with _other=false)
         lookAtTarget = data.get("lookAtTarget", {})
         data_stream.write(struct.pack("i", lookAtTarget.get("dicKey", 0)))
         HoneycomeSceneObjectLoader._save_vector3(data_stream, lookAtTarget.get("position", {"x": 0.0, "y": 0.0, "z": 0.0}))
         HoneycomeSceneObjectLoader._save_vector3(data_stream, lookAtTarget.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0}))
         HoneycomeSceneObjectLoader._save_vector3(data_stream, lookAtTarget.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0}))
+
+        # Write unknown bytes (14 bytes)
+        data_stream.write(data["unknown_bytes_2"])
 
         # Write enable IK
         data_stream.write(struct.pack("b", int(data.get("enable_ik", False))))
@@ -850,8 +862,8 @@ class HoneycomeSceneObjectLoader:
         for i in range(7):
             data_stream.write(struct.pack("b", int(active_fk[i] if i < len(active_fk) else False)))
 
-        # Write expression (4 for version < 0.0.9, 8 for version >= 0.0.9)
-        expression_count = 8 if HoneycomeSceneObjectLoader._compare_versions(version, "0.0.9") >= 0 else 4
+        # Write expression
+        expression_count = 9
         expression = data.get("expression", [False] * expression_count)
         for i in range(expression_count):
             data_stream.write(struct.pack("b", int(expression[i] if i < len(expression) else False)))
@@ -868,6 +880,10 @@ class HoneycomeSceneObjectLoader:
         # Write is anime force loop
         data_stream.write(struct.pack("b", int(data.get("is_anime_force_loop", False))))
 
+        # Write unknown ints
+        data_stream.write(struct.pack("i", data["unknown_int_1"]))
+        data_stream.write(struct.pack("i", data["unknown_int_2"]))
+
         # Write voice ctrl (VoiceCtrl.Save)
         voiceCtrl = data.get("voiceCtrl", {})
         voice_list = voiceCtrl.get("list", [])
@@ -876,7 +892,7 @@ class HoneycomeSceneObjectLoader:
             data_stream.write(struct.pack("i", voice_info.get("group", 0)))
             data_stream.write(struct.pack("i", voice_info.get("category", 0)))
             data_stream.write(struct.pack("i", voice_info.get("no", 0)))
-        data_stream.write(struct.pack("i", voiceCtrl.get("repeat", 0)))
+        data_stream.write(struct.pack("b", int(voiceCtrl.get("repeat", False))))
 
         # Write visible son
         data_stream.write(struct.pack("b", int(data.get("visible_son", False))))
@@ -886,9 +902,6 @@ class HoneycomeSceneObjectLoader:
 
         # Write visible simple
         data_stream.write(struct.pack("b", int(data.get("visible_simple", False))))
-
-        # Write unknown bytes (24 bytes)
-        data_stream.write(data["unknown_bytes_1"])
 
         # Write simple color as JSON string (1-byte length prefix)
         simple_color = data.get("simple_color", {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0})
@@ -902,7 +915,7 @@ class HoneycomeSceneObjectLoader:
             data_stream.write(struct.pack("f", anime_option_param[i] if i < len(anime_option_param) else 0.0))
 
         # Write unknown int
-        data_stream.write(struct.pack("i", data["unknown_int_1"]))
+        data_stream.write(struct.pack("i", data["unknown_int_3"]))
 
         # Write neck byte data
         neck_byte_data = data.get("neck_byte_data", b"")
@@ -967,13 +980,12 @@ class HoneycomeSceneObjectLoader:
             )
             data_stream.write(struct.pack("f", data["line_width"]))
 
-        if HoneycomeSceneObjectLoader._compare_versions(version, "0.0.7") >= 0:
-            write_string(
-                data_stream,
-                json.dumps(data["emission_color"], separators=(",", ":")).encode("utf-8"),
-            )
-            data_stream.write(struct.pack("f", data["emission_power"]))
-            data_stream.write(struct.pack("f", data["light_cancel"]))
+        write_string(
+            data_stream,
+            json.dumps(data["emission_color"], separators=(",", ":")).encode("utf-8"),
+        )
+        data_stream.write(struct.pack("f", data["emission_power"]))
+        data_stream.write(struct.pack("f", data["light_cancel"]))
 
         data_stream.write(data["unknown_7"])
         write_string(data_stream, data["unknown_8"].encode("utf-8"))

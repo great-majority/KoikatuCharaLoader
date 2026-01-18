@@ -17,8 +17,8 @@ class HoneycomeSceneData:
         self.image = None
         self.version = None
         self.dataVersion = None
-        self.data_id_1 = None
-        self.data_id_2 = None
+        self.user_id = None
+        self.data_id = None
         self.title = None
         self.unknown_1 = None
         self.unknown_2 = None
@@ -55,17 +55,16 @@ class HoneycomeSceneData:
 
         # Read version string
         version_str = load_string(data_stream).decode("utf-8")
-        print(f"version: {version_str}")
 
         # Read Honeycome-specific header fields
-        hs.data_id_1 = load_string(data_stream).decode("utf-8")
-        hs.data_id_2 = load_string(data_stream).decode("utf-8")
+        hs.user_id = load_string(data_stream).decode("utf-8")
+        hs.data_id = load_string(data_stream).decode("utf-8")
         hs.title = load_string(data_stream).decode("utf-8")
 
         # Read unknown fields
         hs.unknown_1 = load_type(data_stream, "i")  # 1
-        hs.unknown_2 = load_type(data_stream, "i")  # 2
-        hs.unknown_3 = data_stream.read(32)  # 32 bytes
+        hs.unknown_2 = load_type(data_stream, "i")
+        hs.unknown_3 = data_stream.read(hs.unknown_2)
 
         hs.version = version_str
         hs.dataVersion = version_str
@@ -123,8 +122,8 @@ class HoneycomeSceneData:
         data_stream.write(version_bytes)
 
         # Write Honeycome-specific header fields
-        write_string(data_stream, self.data_id_1.encode("utf-8"))
-        write_string(data_stream, self.data_id_2.encode("utf-8"))
+        write_string(data_stream, self.user_id.encode("utf-8"))
+        write_string(data_stream, self.data_id.encode("utf-8"))
         write_string(data_stream, self.title.encode("utf-8"))
 
         # Write unknown fields
@@ -154,8 +153,8 @@ class HoneycomeSceneData:
         return {
             "version": self.version,
             "dataVersion": self.dataVersion,
-            "data_id_1": self.data_id_1,
-            "data_id_2": self.data_id_2,
+            "user_id": self.user_id,
+            "data_id": self.data_id,
             "title": self.title,
             "objectCount": len(self.dicObject),
         }

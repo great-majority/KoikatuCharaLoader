@@ -11,8 +11,8 @@ def test_load_honeycome_scene_items():
 
     assert hasattr(scene_data, "version")
     assert hasattr(scene_data, "dicObject")
-    assert hasattr(scene_data, "data_id_1")
-    assert hasattr(scene_data, "data_id_2")
+    assert hasattr(scene_data, "user_id")
+    assert hasattr(scene_data, "data_id")
     assert hasattr(scene_data, "title")
 
     assert len(scene_data.dicObject) > 0
@@ -27,8 +27,8 @@ def test_honeycome_scene_to_dict():
     scene_dict = scene_data.to_dict()
 
     assert "version" in scene_dict
-    assert "data_id_1" in scene_dict
-    assert "data_id_2" in scene_dict
+    assert "user_id" in scene_dict
+    assert "data_id" in scene_dict
     assert "title" in scene_dict
     assert "objectCount" in scene_dict
 
@@ -49,8 +49,8 @@ def test_save_honeycome_scene_roundtrip():
 
     assert scene_data_1.version == scene_data_2.version, "Version mismatch"
     assert scene_data_1.dataVersion == scene_data_2.dataVersion, "Data version mismatch"
-    assert scene_data_1.data_id_1 == scene_data_2.data_id_1, "Data ID 1 mismatch"
-    assert scene_data_1.data_id_2 == scene_data_2.data_id_2, "Data ID 2 mismatch"
+    assert scene_data_1.user_id == scene_data_2.user_id, "User ID mismatch"
+    assert scene_data_1.data_id == scene_data_2.data_id, "Data ID mismatch"
     assert scene_data_1.title == scene_data_2.title, "Title mismatch"
     assert scene_data_1.unknown_1 == scene_data_2.unknown_1, "Unknown 1 mismatch"
     assert scene_data_1.unknown_2 == scene_data_2.unknown_2, "Unknown 2 mismatch"

@@ -41,6 +41,7 @@ That's it! :)
   - `SummerVacationCharaData`
   - `SummerVacationSaveData`
   - `AicomiCharaData`
+  - `HoneycomeSceneData` (compatible with DigitalCraft as a whole)
 - Supports loading only:
   - `KoikatuSaveData`
   - `EmocreMapData`

@@ -39,6 +39,7 @@ $ python
   - `SummerVacationCharaData`
   - `SummerVacationSaveData`
   - `AicomiCharaData`
+  - `HoneycomeSceneData` (DigitalCraft全般に対応)
 - 読み込みのみ対応
   - `KoikatuSaveData`
   - `EmocreMapData`

@@ -161,3 +161,6 @@ cython_debug/
 
 /data/testing-data/*
 !/data/testing-data/.gitkeep
+
+.claude/
+.csfile/

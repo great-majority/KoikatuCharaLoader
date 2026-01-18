@@ -30,7 +30,7 @@ class KoikatuSceneData:
         self.image = None
         self.version = None
         self.dataVersion = None
-        self.dicObject = {}
+        self.objects = {}
         self.map = -1
         self.caMap = {}
         self.sunLightType = 0
@@ -118,7 +118,7 @@ class KoikatuSceneData:
             # Load object data based on type
             KoikatuSceneObjectLoader._dispatch_load(data_stream, obj_type, obj_info, version_str)
 
-            ks.dicObject[key] = obj_info
+            ks.objects[key] = obj_info
 
         # Read map info
         ks.map = load_type(data_stream, "i")
@@ -307,8 +307,8 @@ class KoikatuSceneData:
         data_stream.write(version_bytes)
 
         # Write object dictionary
-        data_stream.write(struct.pack("i", len(self.dicObject)))
-        for key, obj_info in self.dicObject.items():
+        data_stream.write(struct.pack("i", len(self.objects)))
+        for key, obj_info in self.objects.items():
             data_stream.write(struct.pack("i", key))
             data_stream.write(struct.pack("i", obj_info["type"]))
 
@@ -485,12 +485,12 @@ class KoikatuSceneData:
             "skyInfo": self.skyInfo,
             "background": self.background,
             "frame": self.frame,
-            "objectCount": len(self.dicObject),
+            "objectCount": len(self.objects),
         }
 
     def __str__(self):
         """String representation of the scene data"""
-        return f"KoikatuSceneData(version={self.version}, objects={len(self.dicObject)})"
+        return f"KoikatuSceneData(version={self.version}, objects={len(self.objects)})"
 
     # ============================================================
     # 3. PRIMITIVE TYPE HELPERS

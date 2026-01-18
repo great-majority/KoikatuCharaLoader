@@ -23,7 +23,7 @@ class HoneycomeSceneData:
         self.unknown_1 = None
         self.unknown_2 = None
         self.unknown_3 = None
-        self.dicObject = {}
+        self.objects = {}
         self.unknown_tail = b""
 
     @classmethod
@@ -81,7 +81,7 @@ class HoneycomeSceneData:
             # Load object data based on type (only item and folder)
             HoneycomeSceneObjectLoader._dispatch_load(data_stream, obj_type, obj_info, version_str)
 
-            hs.dicObject[key] = obj_info
+            hs.objects[key] = obj_info
 
         # Read remaining data as unknown_tail (lights, camera, etc.)
         hs.unknown_tail = data_stream.read()
@@ -132,8 +132,8 @@ class HoneycomeSceneData:
         data_stream.write(self.unknown_3)
 
         # Write object dictionary
-        data_stream.write(struct.pack("i", len(self.dicObject)))
-        for key, obj_info in self.dicObject.items():
+        data_stream.write(struct.pack("i", len(self.objects)))
+        for key, obj_info in self.objects.items():
             data_stream.write(struct.pack("i", key))
             data_stream.write(struct.pack("i", obj_info["type"]))
 
@@ -156,9 +156,9 @@ class HoneycomeSceneData:
             "user_id": self.user_id,
             "data_id": self.data_id,
             "title": self.title,
-            "objectCount": len(self.dicObject),
+            "objectCount": len(self.objects),
         }
 
     def __str__(self):
         """String representation of the scene data"""
-        return f"HoneycomeSceneData(version={self.version}, objects={len(self.dicObject)})"
+        return f"HoneycomeSceneData(version={self.version}, objects={len(self.objects)})"

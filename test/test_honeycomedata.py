@@ -10,14 +10,14 @@ def test_load_honeycome_scene_items():
     scene_data = HoneycomeSceneData.load("./data/hc_scene_items.png")
 
     assert hasattr(scene_data, "version")
-    assert hasattr(scene_data, "dicObject")
+    assert hasattr(scene_data, "objects")
     assert hasattr(scene_data, "user_id")
     assert hasattr(scene_data, "data_id")
     assert hasattr(scene_data, "title")
 
-    assert len(scene_data.dicObject) > 0
+    assert len(scene_data.objects) > 0
 
-    has_folder = any(obj["type"] == 3 for obj in scene_data.dicObject.values())
+    has_folder = any(obj["type"] == 3 for obj in scene_data.objects.values())
     assert has_folder, "Expected at least one folder object in hc_scene_items.png"
 
 
@@ -32,7 +32,7 @@ def test_honeycome_scene_to_dict():
     assert "title" in scene_dict
     assert "objectCount" in scene_dict
 
-    assert scene_dict["objectCount"] == len(scene_data.dicObject)
+    assert scene_dict["objectCount"] == len(scene_data.objects)
 
 
 def test_save_honeycome_scene_roundtrip():
@@ -55,14 +55,14 @@ def test_save_honeycome_scene_roundtrip():
     assert scene_data_1.unknown_1 == scene_data_2.unknown_1, "Unknown 1 mismatch"
     assert scene_data_1.unknown_2 == scene_data_2.unknown_2, "Unknown 2 mismatch"
     assert scene_data_1.unknown_3 == scene_data_2.unknown_3, "Unknown 3 mismatch"
-    assert len(scene_data_1.dicObject) == len(scene_data_2.dicObject), "Object count mismatch"
+    assert len(scene_data_1.objects) == len(scene_data_2.objects), "Object count mismatch"
     assert scene_data_1.unknown_tail == scene_data_2.unknown_tail, "Unknown tail mismatch"
 
-    assert set(scene_data_1.dicObject.keys()) == set(scene_data_2.dicObject.keys()), "Object keys mismatch"
+    assert set(scene_data_1.objects.keys()) == set(scene_data_2.objects.keys()), "Object keys mismatch"
 
-    for key in scene_data_1.dicObject.keys():
-        obj1 = scene_data_1.dicObject[key]
-        obj2 = scene_data_2.dicObject[key]
+    for key in scene_data_1.objects.keys():
+        obj1 = scene_data_1.objects[key]
+        obj2 = scene_data_2.objects[key]
 
         assert obj1["type"] == obj2["type"], f"Object {key} type mismatch"
 
@@ -113,7 +113,7 @@ def test_item_data_preservation():
 
     item_obj = None
     item_key = None
-    for key, obj in scene_data.dicObject.items():
+    for key, obj in scene_data.objects.items():
         if obj["type"] == 1:
             item_obj = obj
             item_key = key
@@ -126,7 +126,7 @@ def test_item_data_preservation():
     scene_data.save(tmpfile.name)
     scene_data2 = HoneycomeSceneData.load(tmpfile.name)
 
-    item_obj2 = scene_data2.dicObject[item_key]
+    item_obj2 = scene_data2.objects[item_key]
 
     data1 = item_obj["data"]
     data2 = item_obj2["data"]
@@ -159,7 +159,7 @@ def test_folder_data_preservation():
 
     folder_obj = None
     folder_key = None
-    for key, obj in scene_data.dicObject.items():
+    for key, obj in scene_data.objects.items():
         if obj["type"] == 3:
             folder_obj = obj
             folder_key = key
@@ -172,7 +172,7 @@ def test_folder_data_preservation():
     scene_data.save(tmpfile.name)
     scene_data2 = HoneycomeSceneData.load(tmpfile.name)
 
-    folder_obj2 = scene_data2.dicObject[folder_key]
+    folder_obj2 = scene_data2.objects[folder_key]
 
     data1 = folder_obj["data"]
     data2 = folder_obj2["data"]
@@ -193,11 +193,11 @@ def test_load_honeycome_scene_objects():
     scene_data = HoneycomeSceneData.load("./data/hc_scene_objects.png")
 
     assert hasattr(scene_data, "version")
-    assert hasattr(scene_data, "dicObject")
-    assert len(scene_data.dicObject) == 8
+    assert hasattr(scene_data, "objects")
+    assert len(scene_data.objects) == 8
 
     type_counts = {}
-    for obj in scene_data.dicObject.values():
+    for obj in scene_data.objects.values():
         t = obj["type"]
         type_counts[t] = type_counts.get(t, 0) + 1
 
@@ -212,7 +212,7 @@ def test_light_data_preservation():
 
     light_obj = None
     light_key = None
-    for key, obj in scene_data.dicObject.items():
+    for key, obj in scene_data.objects.items():
         if obj["type"] == 2:
             light_obj = obj
             light_key = key
@@ -224,7 +224,7 @@ def test_light_data_preservation():
     scene_data.save(tmpfile.name)
     scene_data2 = HoneycomeSceneData.load(tmpfile.name)
 
-    light_obj2 = scene_data2.dicObject[light_key]
+    light_obj2 = scene_data2.objects[light_key]
 
     data1 = light_obj["data"]
     data2 = light_obj2["data"]
@@ -246,7 +246,7 @@ def test_route_data_preservation():
 
     route_obj = None
     route_key = None
-    for key, obj in scene_data.dicObject.items():
+    for key, obj in scene_data.objects.items():
         if obj["type"] == 4:
             route_obj = obj
             route_key = key
@@ -258,7 +258,7 @@ def test_route_data_preservation():
     scene_data.save(tmpfile.name)
     scene_data2 = HoneycomeSceneData.load(tmpfile.name)
 
-    route_obj2 = scene_data2.dicObject[route_key]
+    route_obj2 = scene_data2.objects[route_key]
 
     data1 = route_obj["data"]
     data2 = route_obj2["data"]
@@ -296,7 +296,7 @@ def test_nested_char_data_preservation():
     scene_data = HoneycomeSceneData.load("./data/hc_scene_objects.png")
 
     char_obj = None
-    for obj in scene_data.dicObject.values():
+    for obj in scene_data.objects.values():
         if obj["type"] == 3:
             char_obj = _find_nested_object_by_type(obj["data"], 0)
             if char_obj:
@@ -309,7 +309,7 @@ def test_nested_char_data_preservation():
     scene_data2 = HoneycomeSceneData.load(tmpfile.name)
 
     char_obj2 = None
-    for obj in scene_data2.dicObject.values():
+    for obj in scene_data2.objects.values():
         if obj["type"] == 3:
             char_obj2 = _find_nested_object_by_type(obj["data"], 0)
             if char_obj2:
@@ -333,7 +333,7 @@ def test_nested_camera_data_preservation():
     scene_data = HoneycomeSceneData.load("./data/hc_scene_objects.png")
 
     camera_obj = None
-    for obj in scene_data.dicObject.values():
+    for obj in scene_data.objects.values():
         if obj["type"] == 3:
             camera_obj = _find_nested_object_by_type(obj["data"], 5)
             if camera_obj:
@@ -346,7 +346,7 @@ def test_nested_camera_data_preservation():
     scene_data2 = HoneycomeSceneData.load(tmpfile.name)
 
     camera_obj2 = None
-    for obj in scene_data2.dicObject.values():
+    for obj in scene_data2.objects.values():
         if obj["type"] == 3:
             camera_obj2 = _find_nested_object_by_type(obj["data"], 5)
             if camera_obj2:
@@ -368,7 +368,7 @@ def test_nested_item_data_preservation():
     scene_data = HoneycomeSceneData.load("./data/hc_scene_objects.png")
 
     item_obj = None
-    for obj in scene_data.dicObject.values():
+    for obj in scene_data.objects.values():
         if obj["type"] == 3:
             item_obj = _find_nested_object_by_type(obj["data"], 1)
             if item_obj:
@@ -381,7 +381,7 @@ def test_nested_item_data_preservation():
     scene_data2 = HoneycomeSceneData.load(tmpfile.name)
 
     item_obj2 = None
-    for obj in scene_data2.dicObject.values():
+    for obj in scene_data2.objects.values():
         if obj["type"] == 3:
             item_obj2 = _find_nested_object_by_type(obj["data"], 1)
             if item_obj2:

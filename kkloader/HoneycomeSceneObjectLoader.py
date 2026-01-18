@@ -83,11 +83,7 @@ class HoneycomeSceneObjectLoader:
         if method_name is None:
             raise ValueError(f"Unknown object type: {obj_type}")
         method = getattr(HoneycomeSceneObjectLoader, method_name)
-        try:
-            method(data_stream, obj_info, version)
-        except Exception as e:
-            print(f"[DEBUG] ERROR in {method_name}: {type(e).__name__}: {e}")
-            raise
+        method(data_stream, obj_info, version)
 
     @staticmethod
     def _dispatch_save(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
@@ -701,8 +697,6 @@ class HoneycomeSceneObjectLoader:
         """
         # Load ObjectInfo base data (dicKey, position, rotation, scale, treeState, visible)
         data = HoneycomeSceneObjectLoader._load_object_info_base(data_stream)
-
-        print(data_stream.tell())
 
         # Read route name
         name_bytes = load_string(data_stream)

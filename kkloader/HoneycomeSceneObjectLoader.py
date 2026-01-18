@@ -578,31 +578,20 @@ class HoneycomeSceneObjectLoader:
     @staticmethod
     def load_item_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
         data = HoneycomeSceneObjectLoader._load_object_info_base(data_stream)
+
         data["unknown_1"] = struct.unpack("i", data_stream.read(4))[0]
-        data["unknown_2"] = struct.unpack("i", data_stream.read(4))[0]
         data["group"] = struct.unpack("i", data_stream.read(4))[0]
-
-        if HoneycomeSceneObjectLoader._compare_versions(version, "1.1.1.0") >= 0:
-            data["category"] = struct.unpack("i", data_stream.read(4))[0]
-        else:
-            data["category"] = 0
-
+        data["category"] = struct.unpack("i", data_stream.read(4))[0]
         data["no"] = struct.unpack("i", data_stream.read(4))[0]
         data["unknown_3"] = data_stream.read(8)
 
         data["colors"] = []
-        if HoneycomeSceneObjectLoader._compare_versions(version, "0.0.3") >= 0:
-            num_colors = 8
-        else:
-            num_colors = 7
-        for _ in range(num_colors):
+        for _ in range(8):
             color_bytes = load_string(data_stream)
             if len(color_bytes) > 0:
                 data["colors"].append(json.loads(color_bytes.decode("utf-8")))
             else:
                 data["colors"].append(None)
-        if num_colors == 7:
-            data["colors"].append({"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0})
 
         data["unknown_4"] = struct.unpack("i", data_stream.read(4))[0]
         data["unknown_5"] = bool(struct.unpack("b", data_stream.read(1))[0])
@@ -614,18 +603,9 @@ class HoneycomeSceneObjectLoader:
         data["unknown_6"] = data_stream.read(4)
         data["alpha"] = struct.unpack("f", data_stream.read(4))[0]
 
-        if HoneycomeSceneObjectLoader._compare_versions(version, "0.0.4") >= 0:
-            line_color_json = load_string(data_stream).decode("utf-8")
-            data["line_color"] = json.loads(line_color_json)
-            data["line_width"] = struct.unpack("f", data_stream.read(4))[0]
-        else:
-            data["line_color"] = {
-                "r": 128.0 / 255.0,
-                "g": 128.0 / 255.0,
-                "b": 128.0 / 255.0,
-                "a": 1.0,
-            }
-            data["line_width"] = 1.0
+        line_color_json = load_string(data_stream).decode("utf-8")
+        data["line_color"] = json.loads(line_color_json)
+        data["line_width"] = struct.unpack("f", data_stream.read(4))[0]
 
         emission_color_json = load_string(data_stream).decode("utf-8")
         data["emission_color"] = json.loads(emission_color_json)
@@ -643,11 +623,6 @@ class HoneycomeSceneObjectLoader:
         for _ in range(bones_count):
             bone_key = load_string(data_stream).decode("utf-8")
             data["bones"][bone_key] = HoneycomeSceneObjectLoader.load_bone_info(data_stream)
-
-        if HoneycomeSceneObjectLoader._compare_versions(version, "1.0.1") >= 0:
-            data["enable_dynamic_bone"] = bool(struct.unpack("b", data_stream.read(1))[0])
-        else:
-            data["enable_dynamic_bone"] = True
 
         data["unknown_10"] = bool(struct.unpack("b", data_stream.read(1))[0])
         data["anime_normalized_time"] = struct.unpack("f", data_stream.read(4))[0]
@@ -950,17 +925,12 @@ class HoneycomeSceneObjectLoader:
         HoneycomeSceneObjectLoader._save_object_info_base(data_stream, data)
 
         data_stream.write(struct.pack("i", data["unknown_1"]))
-        data_stream.write(struct.pack("i", data["unknown_2"]))
         data_stream.write(struct.pack("i", data["group"]))
-
-        if HoneycomeSceneObjectLoader._compare_versions(version, "1.1.1.0") >= 0:
-            data_stream.write(struct.pack("i", data["category"]))
-
+        data_stream.write(struct.pack("i", data["category"]))
         data_stream.write(struct.pack("i", data["no"]))
         data_stream.write(data["unknown_3"])
 
-        num_colors = 8 if HoneycomeSceneObjectLoader._compare_versions(version, "0.0.3") >= 0 else 7
-        for i in range(num_colors):
+        for i in range(8):
             color = data["colors"][i] if i < len(data["colors"]) and data["colors"][i] is not None else {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0}
             write_string(data_stream, json.dumps(color, separators=(",", ":")).encode("utf-8"))
 
@@ -973,12 +943,12 @@ class HoneycomeSceneObjectLoader:
         data_stream.write(data["unknown_6"])
         data_stream.write(struct.pack("f", data["alpha"]))
 
-        if HoneycomeSceneObjectLoader._compare_versions(version, "0.0.4") >= 0:
-            write_string(
-                data_stream,
-                json.dumps(data["line_color"], separators=(",", ":")).encode("utf-8"),
-            )
-            data_stream.write(struct.pack("f", data["line_width"]))
+        # Note: line_color/line_width exist since version >= 0.0.4 (always true for 0.0.5 and 1.0.0)
+        write_string(
+            data_stream,
+            json.dumps(data["line_color"], separators=(",", ":")).encode("utf-8"),
+        )
+        data_stream.write(struct.pack("f", data["line_width"]))
 
         write_string(
             data_stream,
@@ -996,9 +966,6 @@ class HoneycomeSceneObjectLoader:
         for bone_key, bone_data in data["bones"].items():
             write_string(data_stream, bone_key.encode("utf-8"))
             HoneycomeSceneObjectLoader.save_bone_info(data_stream, bone_data)
-
-        if HoneycomeSceneObjectLoader._compare_versions(version, "1.0.1") >= 0:
-            data_stream.write(struct.pack("b", int(data["enable_dynamic_bone"])))
 
         data_stream.write(struct.pack("b", int(data["unknown_10"])))
         data_stream.write(struct.pack("f", data["anime_normalized_time"]))
@@ -1155,37 +1122,3 @@ class HoneycomeSceneObjectLoader:
         # Dispatch to appropriate save function based on type
         HoneycomeSceneObjectLoader._dispatch_save(data_stream, child_data, version)
 
-    # ============================================================
-    # 8. UTILITY METHODS
-    # ============================================================
-    """
-    General utility methods used across multiple sections.
-
-    - _compare_versions: Version string comparison for compatibility checks
-    """
-
-    @staticmethod
-    def _compare_versions(version_str: str, target: str) -> int:
-        """
-        Compare version strings (e.g., "1.0.3.0" vs "1.0.4.0")
-        Returns: -1 if version < target, 0 if equal, 1 if version > target
-        """
-        if version_str is None:
-            # If no version provided, assume latest
-            return 1
-
-        version_parts = [int(x) for x in version_str.split(".")]
-        target_parts = [int(x) for x in target.split(".")]
-
-        # Pad shorter version with zeros
-        while len(version_parts) < len(target_parts):
-            version_parts.append(0)
-        while len(target_parts) < len(version_parts):
-            target_parts.append(0)
-
-        for v, t in zip(version_parts, target_parts):
-            if v < t:
-                return -1
-            elif v > t:
-                return 1
-        return 0

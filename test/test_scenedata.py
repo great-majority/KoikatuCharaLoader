@@ -10,19 +10,19 @@ def test_load_simple_scene():
 
     # Check basic properties
     assert hasattr(scene_data, "version")
-    assert hasattr(scene_data, "dicObject")
+    assert hasattr(scene_data, "objects")
     assert hasattr(scene_data, "map")
     assert scene_data.version == "1.1.2.1"
 
     # Check that the scene has exactly one object
-    assert len(scene_data.dicObject) == 1
+    assert len(scene_data.objects) == 1
 
     # Check that the object is of the expected type (1 = OIItemInfo)
-    obj_key = list(scene_data.dicObject.keys())[0]
-    assert scene_data.dicObject[obj_key]["type"] == 1
+    obj_key = list(scene_data.objects.keys())[0]
+    assert scene_data.objects[obj_key]["type"] == 1
 
     # Check that the object has the expected data structure
-    obj_data = scene_data.dicObject[obj_key]["data"]
+    obj_data = scene_data.objects[obj_key]["data"]
     assert "group" in obj_data
     assert "category" in obj_data
     assert "no" in obj_data
@@ -31,10 +31,10 @@ def test_load_simple_scene():
     assert "panel" in obj_data
 
 
-def count_types_recursive(dicObject):
+def count_types_recursive(objects):
     """Recursively count all objects by type including nested children"""
     type_counts = {}
-    for obj in dicObject.values():
+    for obj in objects.values():
         obj_type = obj["type"]
         type_counts[obj_type] = type_counts.get(obj_type, 0) + 1
         data = obj.get("data", {})
@@ -53,7 +53,7 @@ def test_load_kk_scene():
     scene_data = KoikatuSceneData.load("./data/kk_scene.png")
     assert scene_data.version == "1.0.4.2"
 
-    type_counts = count_types_recursive(scene_data.dicObject)
+    type_counts = count_types_recursive(scene_data.objects)
     # type: 0=Character, 1=Item, 2=Light, 3=Folder
     assert type_counts.get(0, 0) == 1  # 1 character
     assert type_counts.get(1, 0) == 169  # 169 items
@@ -65,7 +65,7 @@ def test_load_kk_scene_mod():
     scene_data = KoikatuSceneData.load("./data/kk_scene_mod.png")
     assert scene_data.version == "1.1.2.1"
 
-    type_counts = count_types_recursive(scene_data.dicObject)
+    type_counts = count_types_recursive(scene_data.objects)
     # type: 0=Character, 1=Item, 2=Light, 3=Folder
     assert type_counts.get(0, 0) == 1  # 1 character
     assert type_counts.get(1, 0) == 201  # 201 items
@@ -78,7 +78,7 @@ def test_load_kks_scene():
     scene_data = KoikatuSceneData.load("./data/kks_scene.png")
     assert scene_data.version == "1.1.2.1"
 
-    type_counts = count_types_recursive(scene_data.dicObject)
+    type_counts = count_types_recursive(scene_data.objects)
     assert type_counts.get(2, 0) == 1  # 1 light
     assert type_counts.get(3, 0) == 1  # 1 folder
 
@@ -94,13 +94,13 @@ def test_scene_to_dict():
     assert "objectCount" in scene_dict
 
     # Check that the object count matches
-    assert scene_dict["objectCount"] == len(scene_data.dicObject)
+    assert scene_dict["objectCount"] == len(scene_data.objects)
 
 
-def count_all_objects(dicObject):
+def count_all_objects(objects):
     """Recursively count all objects including nested children"""
-    count = len(dicObject)
-    for obj in dicObject.values():
+    count = len(objects)
+    for obj in objects.values():
         data = obj.get("data", {})
         # Count children in folders and routes
         if "child" in data:
@@ -138,23 +138,23 @@ def test_save_scene():
 
     # Check that the basic properties match (version check skipped - format may evolve)
     assert scene_data.map == scene_data2.map
-    assert len(scene_data.dicObject) == len(scene_data2.dicObject)
+    assert len(scene_data.objects) == len(scene_data2.objects)
 
     # Check total object count including nested objects
-    total_count_1 = count_all_objects(scene_data.dicObject)
-    total_count_2 = count_all_objects(scene_data2.dicObject)
+    total_count_1 = count_all_objects(scene_data.objects)
+    total_count_2 = count_all_objects(scene_data2.objects)
     assert total_count_1 == total_count_2, f"Total object count mismatch: {total_count_1} vs {total_count_2}"
 
     # Check that the object data matches
-    obj_key = list(scene_data.dicObject.keys())[0]
-    obj_key2 = list(scene_data2.dicObject.keys())[0]
+    obj_key = list(scene_data.objects.keys())[0]
+    obj_key2 = list(scene_data2.objects.keys())[0]
 
-    assert scene_data.dicObject[obj_key]["type"] == scene_data2.dicObject[obj_key2]["type"]
+    assert scene_data.objects[obj_key]["type"] == scene_data2.objects[obj_key2]["type"]
 
     # Check that all object data is preserved through save/load cycle
-    for key in scene_data.dicObject.keys():
-        obj1 = scene_data.dicObject[key]
-        obj2 = scene_data2.dicObject[key]
+    for key in scene_data.objects.keys():
+        obj1 = scene_data.objects[key]
+        obj2 = scene_data2.objects[key]
 
         # Check type matches
         assert obj1["type"] == obj2["type"], f"Object {key} type mismatch"
@@ -190,8 +190,8 @@ def test_save_complex_scene():
 
     scene_data2 = KoikatuSceneData.load(tmpfile.name)
 
-    type_counts1 = count_types_recursive(scene_data.dicObject)
-    type_counts2 = count_types_recursive(scene_data2.dicObject)
+    type_counts1 = count_types_recursive(scene_data.objects)
+    type_counts2 = count_types_recursive(scene_data2.objects)
     assert type_counts1 == type_counts2
 
 
@@ -204,8 +204,8 @@ def test_save_kk_scene_mod():
 
     scene_data2 = KoikatuSceneData.load(tmpfile.name)
 
-    type_counts1 = count_types_recursive(scene_data.dicObject)
-    type_counts2 = count_types_recursive(scene_data2.dicObject)
+    type_counts1 = count_types_recursive(scene_data.objects)
+    type_counts2 = count_types_recursive(scene_data2.objects)
     assert type_counts1 == type_counts2
 
 
@@ -218,6 +218,6 @@ def test_save_kks_scene():
 
     scene_data2 = KoikatuSceneData.load(tmpfile.name)
 
-    type_counts1 = count_types_recursive(scene_data.dicObject)
-    type_counts2 = count_types_recursive(scene_data2.dicObject)
+    type_counts1 = count_types_recursive(scene_data.objects)
+    type_counts2 = count_types_recursive(scene_data2.objects)
     assert type_counts1 == type_counts2

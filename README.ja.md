@@ -195,10 +195,10 @@ from kkloader import KoikatuSceneData
 
 scene = KoikatuSceneData.load("./data/kk_scene.png")
 print(f"Version: {scene.version}")
-print(f"Object count: {len(scene.dicObject)}")
+print(f"Object count: {len(scene.objects)}")
 
 # シーン内のオブジェクトを列挙
-for key, obj in scene.dicObject.items():
+for key, obj in scene.objects.items():
     obj_type = obj["type"]  # 0=Character, 1=Item, 2=Light, 3=Folder
     print(f"  Key: {key}, Type: {obj_type}")
 

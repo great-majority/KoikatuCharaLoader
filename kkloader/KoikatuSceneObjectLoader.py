@@ -86,11 +86,11 @@ class KoikatuSceneObjectLoader:
         return {"x": struct.unpack("f", data_stream.read(4))[0], "y": struct.unpack("f", data_stream.read(4))[0], "z": struct.unpack("f", data_stream.read(4))[0]}
 
     @staticmethod
-    def _save_vector3(data_stream: BinaryIO, vector3: Dict[str, float], default: float = 0.0) -> None:
+    def _save_vector3(data_stream: BinaryIO, vector3: Dict[str, float]) -> None:
         """Save a Vector3 (x, y, z) to the data stream"""
-        data_stream.write(struct.pack("f", vector3.get("x", default)))
-        data_stream.write(struct.pack("f", vector3.get("y", default)))
-        data_stream.write(struct.pack("f", vector3.get("z", default)))
+        data_stream.write(struct.pack("f", vector3["x"]))
+        data_stream.write(struct.pack("f", vector3["y"]))
+        data_stream.write(struct.pack("f", vector3["z"]))
 
     @staticmethod
     def _load_color_rgba(data_stream: BinaryIO) -> Dict[str, float]:
@@ -100,10 +100,10 @@ class KoikatuSceneObjectLoader:
     @staticmethod
     def _save_color_rgba(data_stream: BinaryIO, color: Dict[str, float]) -> None:
         """Save Color (r, g, b, a) as 4 floats"""
-        data_stream.write(struct.pack("f", color.get("r", 1.0)))
-        data_stream.write(struct.pack("f", color.get("g", 1.0)))
-        data_stream.write(struct.pack("f", color.get("b", 1.0)))
-        data_stream.write(struct.pack("f", color.get("a", 1.0)))
+        data_stream.write(struct.pack("f", color["r"]))
+        data_stream.write(struct.pack("f", color["g"]))
+        data_stream.write(struct.pack("f", color["b"]))
+        data_stream.write(struct.pack("f", color["a"]))
 
     @staticmethod
     def parse_color_json(json_str: str) -> Dict[str, float]:
@@ -152,25 +152,22 @@ class KoikatuSceneObjectLoader:
         # Save dicKey, changeAmount (position, rotation, scale), treeState, visible
 
         # Write dicKey (int)
-        data_stream.write(struct.pack("i", data.get("dicKey", 0)))
+        data_stream.write(struct.pack("i", data["dicKey"]))
 
         # Write position (Vector3)
-        pos = data.get("position", {"x": 0.0, "y": 0.0, "z": 0.0})
-        KoikatuSceneObjectLoader._save_vector3(data_stream, pos, default=0.0)
+        KoikatuSceneObjectLoader._save_vector3(data_stream, data["position"])
 
         # Write rotation (Vector3)
-        rot = data.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0})
-        KoikatuSceneObjectLoader._save_vector3(data_stream, rot, default=0.0)
+        KoikatuSceneObjectLoader._save_vector3(data_stream, data["rotation"])
 
         # Write scale (Vector3)
-        scale = data.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0})
-        KoikatuSceneObjectLoader._save_vector3(data_stream, scale, default=1.0)
+        KoikatuSceneObjectLoader._save_vector3(data_stream, data["scale"])
 
         # Write treeState
-        data_stream.write(struct.pack("i", data.get("treeState", 0)))
+        data_stream.write(struct.pack("i", data["treeState"]))
 
         # Write visible
-        data_stream.write(struct.pack("b", int(data.get("visible", True))))
+        data_stream.write(struct.pack("b", int(data["visible"])))
 
     @staticmethod
     def _load_light_info_base(data_stream: BinaryIO) -> Dict[str, Any]:
@@ -231,13 +228,13 @@ class KoikatuSceneObjectLoader:
         """Save bone info data"""
         # Based on OIBoneInfo.Save in C#
         # Write dicKey
-        data_stream.write(struct.pack("i", bone_data.get("dicKey", 0)))
+        data_stream.write(struct.pack("i", bone_data["dicKey"]))
 
         # Write changeAmount (position, rotation, scale)
-        change_amount = bone_data.get("changeAmount", {})
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("position", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0}))
+        change_amount = bone_data["changeAmount"]
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount["position"])
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount["rotation"])
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount["scale"])
 
     @staticmethod
     def load_pattern_info(data_stream: BinaryIO) -> Dict[str, Any]:
@@ -329,19 +326,19 @@ class KoikatuSceneObjectLoader:
         Based on OIRoutePointInfo.Save in C#
         """
         # Write dicKey
-        data_stream.write(struct.pack("i", route_point.get("dicKey", 0)))
+        data_stream.write(struct.pack("i", route_point["dicKey"]))
 
         # Write ChangeAmount (3 Vector3: position, rotation, scale)
-        change_amount = route_point.get("changeAmount", {})
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("position", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0}))
+        change_amount = route_point["changeAmount"]
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount["position"])
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount["rotation"])
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount["scale"])
 
         # Write speed
-        data_stream.write(struct.pack("f", route_point.get("speed", 2.0)))
+        data_stream.write(struct.pack("f", route_point["speed"]))
 
         # Write easeType
-        data_stream.write(struct.pack("i", route_point.get("easeType", 0)))
+        data_stream.write(struct.pack("i", route_point["easeType"]))
 
         # Version 1.0.3 only: write a dummy boolean (to match load which discards it)
         if KoikatuSceneObjectLoader._compare_versions(version, "1.0.3") == 0:
@@ -349,16 +346,15 @@ class KoikatuSceneObjectLoader:
 
         # Write connection (version >= 1.0.4.1)
         if KoikatuSceneObjectLoader._compare_versions(version, "1.0.4.1") >= 0:
-            data_stream.write(struct.pack("i", route_point.get("connection", 0)))
+            data_stream.write(struct.pack("i", route_point["connection"]))
 
         # Write aidInfo (version >= 1.0.4.1)
         if KoikatuSceneObjectLoader._compare_versions(version, "1.0.4.1") >= 0:
-            aid_info = route_point.get("aidInfo", {})
-            KoikatuSceneObjectLoader._save_route_point_aid_info(data_stream, aid_info)
+            KoikatuSceneObjectLoader._save_route_point_aid_info(data_stream, route_point["aidInfo"])
 
         # Write link (version >= 1.0.4.2)
         if KoikatuSceneObjectLoader._compare_versions(version, "1.0.4.2") >= 0:
-            data_stream.write(struct.pack("b", int(route_point.get("link", False))))
+            data_stream.write(struct.pack("b", int(route_point["link"])))
 
     @staticmethod
     def _load_route_point_aid_info(data_stream: BinaryIO) -> Dict[str, Any]:
@@ -386,16 +382,16 @@ class KoikatuSceneObjectLoader:
         Based on OIRoutePointAidInfo.Save in C#
         """
         # Write dicKey
-        data_stream.write(struct.pack("i", aid_info.get("dicKey", 0)))
+        data_stream.write(struct.pack("i", aid_info["dicKey"]))
 
         # Write ChangeAmount (3 Vector3: position, rotation, scale)
-        change_amount = aid_info.get("changeAmount", {})
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("position", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0}))
+        change_amount = aid_info["changeAmount"]
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount["position"])
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount["rotation"])
+        KoikatuSceneObjectLoader._save_vector3(data_stream, change_amount["scale"])
 
         # Write isInit
-        data_stream.write(struct.pack("b", int(aid_info.get("isInit", False))))
+        data_stream.write(struct.pack("b", int(aid_info["isInit"])))
 
     # ============================================================
     # 5. OBJECT TYPE LOADERS
@@ -854,35 +850,29 @@ class KoikatuSceneObjectLoader:
         KoikatuSceneObjectLoader._save_object_info_base(data_stream, data)
 
         # Write sex
-        data_stream.write(struct.pack("i", data.get("sex", 0)))
+        data_stream.write(struct.pack("i", data["sex"]))
 
         # Save character file data using KoikatuCharaData
         # This corresponds to ChaFileControl.SaveCharaFile in C#
-        chara_data = data.get("character")
-        if chara_data is not None:
-            chara_bytes = bytes(chara_data)
-            data_stream.write(chara_bytes)
-        else:
-            # If no character data, we need to write empty character data
-            # This should not normally happen in valid data
-            raise ValueError("Character data is missing in save_char_info")
+        chara_bytes = bytes(data["character"])
+        data_stream.write(chara_bytes)
 
         # Write bones dictionary
-        bones = data.get("bones", {})
+        bones = data["bones"]
         data_stream.write(struct.pack("i", len(bones)))
         for bone_key, bone_data in bones.items():
             data_stream.write(struct.pack("i", bone_key))
             KoikatuSceneObjectLoader.save_bone_info(data_stream, bone_data)
 
         # Write IK targets dictionary
-        ik_targets = data.get("ik_targets", {})
+        ik_targets = data["ik_targets"]
         data_stream.write(struct.pack("i", len(ik_targets)))
         for ik_key, ik_data in ik_targets.items():
             data_stream.write(struct.pack("i", ik_key))
             KoikatuSceneObjectLoader.save_bone_info(data_stream, ik_data)
 
         # Write child objects dictionary
-        child = data.get("child", {})
+        child = data["child"]
         data_stream.write(struct.pack("i", len(child)))
         for child_key, child_list in child.items():
             data_stream.write(struct.pack("i", child_key))
@@ -891,123 +881,121 @@ class KoikatuSceneObjectLoader:
                 KoikatuSceneObjectLoader.save_child_objects(data_stream, child_obj, version)
 
         # Write kinematic mode
-        data_stream.write(struct.pack("i", data.get("kinematic_mode", 0)))
+        data_stream.write(struct.pack("i", data["kinematic_mode"]))
 
         # Write anime info
-        anime_info = data.get("anime_info", {})
-        data_stream.write(struct.pack("i", anime_info.get("group", -1)))
-        data_stream.write(struct.pack("i", anime_info.get("category", -1)))
-        data_stream.write(struct.pack("i", anime_info.get("no", -1)))
+        anime_info = data["anime_info"]
+        data_stream.write(struct.pack("i", anime_info["group"]))
+        data_stream.write(struct.pack("i", anime_info["category"]))
+        data_stream.write(struct.pack("i", anime_info["no"]))
 
         # Write hand patterns
-        hand_patterns = data.get("hand_patterns", [0, 0])
+        hand_patterns = data["hand_patterns"]
         for i in range(2):
-            data_stream.write(struct.pack("i", hand_patterns[i] if i < len(hand_patterns) else 0))
+            data_stream.write(struct.pack("i", hand_patterns[i]))
 
         # Write nipple
-        data_stream.write(struct.pack("f", data.get("nipple", 0.0)))
+        data_stream.write(struct.pack("f", data["nipple"]))
 
         # Write siru (5 bytes)
-        siru = data.get("siru", b"\x00" * 5)
-        data_stream.write(siru if len(siru) == 5 else b"\x00" * 5)
+        data_stream.write(data["siru"])
 
         # Write mouth open
-        data_stream.write(struct.pack("f", data.get("mouth_open", 0.0)))
+        data_stream.write(struct.pack("f", data["mouth_open"]))
 
         # Write lip sync
-        data_stream.write(struct.pack("b", int(data.get("lip_sync", True))))
+        data_stream.write(struct.pack("b", int(data["lip_sync"])))
 
         # Write look at target (LookAtTargetInfo.Save - base.Save with _other=false)
-        lookAtTarget = data.get("lookAtTarget", {})
-        data_stream.write(struct.pack("i", lookAtTarget.get("dicKey", 0)))
-        KoikatuSceneObjectLoader._save_vector3(data_stream, lookAtTarget.get("position", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        KoikatuSceneObjectLoader._save_vector3(data_stream, lookAtTarget.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        KoikatuSceneObjectLoader._save_vector3(data_stream, lookAtTarget.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0}))
+        lookAtTarget = data["lookAtTarget"]
+        data_stream.write(struct.pack("i", lookAtTarget["dicKey"]))
+        KoikatuSceneObjectLoader._save_vector3(data_stream, lookAtTarget["position"])
+        KoikatuSceneObjectLoader._save_vector3(data_stream, lookAtTarget["rotation"])
+        KoikatuSceneObjectLoader._save_vector3(data_stream, lookAtTarget["scale"])
 
         # Write enable IK
-        data_stream.write(struct.pack("b", int(data.get("enable_ik", False))))
+        data_stream.write(struct.pack("b", int(data["enable_ik"])))
 
         # Write active IK (5 bools)
-        active_ik = data.get("active_ik", [True] * 5)
+        active_ik = data["active_ik"]
         for i in range(5):
-            data_stream.write(struct.pack("b", int(active_ik[i] if i < len(active_ik) else True)))
+            data_stream.write(struct.pack("b", int(active_ik[i])))
 
         # Write enable FK
-        data_stream.write(struct.pack("b", int(data.get("enable_fk", False))))
+        data_stream.write(struct.pack("b", int(data["enable_fk"])))
 
         # Write active FK (7 bools)
-        active_fk = data.get("active_fk", [False, True, False, True, False, False, False])
+        active_fk = data["active_fk"]
         for i in range(7):
-            data_stream.write(struct.pack("b", int(active_fk[i] if i < len(active_fk) else False)))
+            data_stream.write(struct.pack("b", int(active_fk[i])))
 
         # Write expression (4 for version < 0.0.9, 8 for version >= 0.0.9)
         expression_count = 8 if KoikatuSceneObjectLoader._compare_versions(version, "0.0.9") >= 0 else 4
-        expression = data.get("expression", [False] * expression_count)
+        expression = data["expression"]
         for i in range(expression_count):
-            data_stream.write(struct.pack("b", int(expression[i] if i < len(expression) else False)))
+            data_stream.write(struct.pack("b", int(expression[i])))
 
         # Write anime speed
-        data_stream.write(struct.pack("f", data.get("anime_speed", 1.0)))
+        data_stream.write(struct.pack("f", data["anime_speed"]))
 
         # Write anime pattern
-        data_stream.write(struct.pack("f", data.get("anime_pattern", 0.0)))
+        data_stream.write(struct.pack("f", data["anime_pattern"]))
 
         # Write anime option visible
-        data_stream.write(struct.pack("b", int(data.get("anime_option_visible", True))))
+        data_stream.write(struct.pack("b", int(data["anime_option_visible"])))
 
         # Write is anime force loop
-        data_stream.write(struct.pack("b", int(data.get("is_anime_force_loop", False))))
+        data_stream.write(struct.pack("b", int(data["is_anime_force_loop"])))
 
         # Write voice ctrl (VoiceCtrl.Save)
-        voiceCtrl = data.get("voiceCtrl", {})
-        voice_list = voiceCtrl.get("list", [])
+        voiceCtrl = data["voiceCtrl"]
+        voice_list = voiceCtrl["list"]
         data_stream.write(struct.pack("i", len(voice_list)))
         for voice_info in voice_list:
-            data_stream.write(struct.pack("i", voice_info.get("group", 0)))
-            data_stream.write(struct.pack("i", voice_info.get("category", 0)))
-            data_stream.write(struct.pack("i", voice_info.get("no", 0)))
-        data_stream.write(struct.pack("i", voiceCtrl.get("repeat", 0)))
+            data_stream.write(struct.pack("i", voice_info["group"]))
+            data_stream.write(struct.pack("i", voice_info["category"]))
+            data_stream.write(struct.pack("i", voice_info["no"]))
+        data_stream.write(struct.pack("i", voiceCtrl["repeat"]))
 
         # Write visible son
-        data_stream.write(struct.pack("b", int(data.get("visible_son", False))))
+        data_stream.write(struct.pack("b", int(data["visible_son"])))
 
         # Write son length
-        data_stream.write(struct.pack("f", data.get("son_length", 1.0)))
+        data_stream.write(struct.pack("f", data["son_length"]))
 
         # Write visible simple
-        data_stream.write(struct.pack("b", int(data.get("visible_simple", False))))
+        data_stream.write(struct.pack("b", int(data["visible_simple"])))
 
         # Write simple color as JSON string
-        simple_color = data.get("simple_color", {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0})
-        KoikatuSceneObjectLoader._save_color_json(data_stream, simple_color)
+        KoikatuSceneObjectLoader._save_color_json(data_stream, data["simple_color"])
 
         # Write anime option param (2 floats)
-        anime_option_param = data.get("anime_option_param", [0.0, 0.0])
+        anime_option_param = data["anime_option_param"]
         for i in range(2):
-            data_stream.write(struct.pack("f", anime_option_param[i] if i < len(anime_option_param) else 0.0))
+            data_stream.write(struct.pack("f", anime_option_param[i]))
 
         # Write neck byte data
-        neck_byte_data = data.get("neck_byte_data", b"")
+        neck_byte_data = data["neck_byte_data"]
         data_stream.write(struct.pack("i", len(neck_byte_data)))
         data_stream.write(neck_byte_data)
 
         # Write eyes byte data
-        eyes_byte_data = data.get("eyes_byte_data", b"")
+        eyes_byte_data = data["eyes_byte_data"]
         data_stream.write(struct.pack("i", len(eyes_byte_data)))
         data_stream.write(eyes_byte_data)
 
         # Write anime normalized time
-        data_stream.write(struct.pack("f", data.get("anime_normalized_time", 0.0)))
+        data_stream.write(struct.pack("f", data["anime_normalized_time"]))
 
         # Write dic access group
-        dic_access_group = data.get("dic_access_group", {})
+        dic_access_group = data["dic_access_group"]
         data_stream.write(struct.pack("i", len(dic_access_group)))
         for key, value in dic_access_group.items():
             data_stream.write(struct.pack("i", key))
             data_stream.write(struct.pack("i", value))
 
         # Write dic access no
-        dic_access_no = data.get("dic_access_no", {})
+        dic_access_no = data["dic_access_no"]
         data_stream.write(struct.pack("i", len(dic_access_no)))
         for key, value in dic_access_no.items():
             data_stream.write(struct.pack("i", key))
@@ -1037,8 +1025,7 @@ class KoikatuSceneObjectLoader:
         # Write colors (version >= 0.0.3: 8 colors, else 7 colors)
         num_colors = 8 if KoikatuSceneObjectLoader._compare_versions(version, "0.0.3") >= 0 else 7
         for i in range(num_colors):
-            color = data["colors"][i] if i < len(data["colors"]) else {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0}
-            write_string(data_stream, json.dumps(color, separators=(",", ":")).encode("utf-8"))
+            write_string(data_stream, json.dumps(data["colors"][i], separators=(",", ":")).encode("utf-8"))
 
         # Write patterns
         for pattern in data["patterns"]:
@@ -1084,10 +1071,11 @@ class KoikatuSceneObjectLoader:
         data_stream.write(struct.pack("f", data["anime_normalized_time"]))
 
         # Write child objects count
-        data_stream.write(struct.pack("i", len(data.get("child", []))))
+        child_list = data["child"]
+        data_stream.write(struct.pack("i", len(child_list)))
 
         # Write child objects data
-        for child in data.get("child", []):
+        for child in child_list:
             KoikatuSceneObjectLoader.save_child_objects(data_stream, child, version)
 
     @staticmethod
@@ -1100,21 +1088,20 @@ class KoikatuSceneObjectLoader:
         KoikatuSceneObjectLoader._save_object_info_base(data_stream, data)
 
         # Write no
-        data_stream.write(struct.pack("i", data.get("no", 0)))
+        data_stream.write(struct.pack("i", data["no"]))
 
         # Write color (r, g, b, a)
-        color = data.get("color", {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0})
-        KoikatuSceneObjectLoader._save_color_rgba(data_stream, color)
+        KoikatuSceneObjectLoader._save_color_rgba(data_stream, data["color"])
 
         # Write intensity, range, spotAngle
-        data_stream.write(struct.pack("f", data.get("intensity", 1.0)))
-        data_stream.write(struct.pack("f", data.get("range", 10.0)))
-        data_stream.write(struct.pack("f", data.get("spotAngle", 30.0)))
+        data_stream.write(struct.pack("f", data["intensity"]))
+        data_stream.write(struct.pack("f", data["range"]))
+        data_stream.write(struct.pack("f", data["spotAngle"]))
 
         # Write shadow, enable, drawTarget
-        data_stream.write(struct.pack("b", int(data.get("shadow", True))))
-        data_stream.write(struct.pack("b", int(data.get("enable", True))))
-        data_stream.write(struct.pack("b", int(data.get("drawTarget", True))))
+        data_stream.write(struct.pack("b", int(data["shadow"])))
+        data_stream.write(struct.pack("b", int(data["enable"])))
+        data_stream.write(struct.pack("b", int(data["drawTarget"])))
 
     @staticmethod
     def save_folder_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
@@ -1126,12 +1113,12 @@ class KoikatuSceneObjectLoader:
         KoikatuSceneObjectLoader._save_object_info_base(data_stream, data)
 
         # Write name (string)
-        name = data.get("name", "")
+        name = data["name"]
         name_bytes = name.encode("utf-8") if isinstance(name, str) else name
         write_string(data_stream, name_bytes)
 
         # Write child count
-        child_list = data.get("child", [])
+        child_list = data["child"]
         data_stream.write(struct.pack("i", len(child_list)))
 
         # Write each child object
@@ -1148,36 +1135,35 @@ class KoikatuSceneObjectLoader:
         KoikatuSceneObjectLoader._save_object_info_base(data_stream, data)
 
         # Write name (string)
-        name = data.get("name", "")
+        name = data["name"]
         name_bytes = name.encode("utf-8") if isinstance(name, str) else name
         write_string(data_stream, name_bytes)
 
         # Write child count and children
-        child_list = data.get("child", [])
+        child_list = data["child"]
         data_stream.write(struct.pack("i", len(child_list)))
         for child in child_list:
             KoikatuSceneObjectLoader.save_child_objects(data_stream, child, version)
 
         # Write route points count and route points
-        route_points = data.get("route_points", [])
+        route_points = data["route_points"]
         data_stream.write(struct.pack("i", len(route_points)))
         for route_point in route_points:
             KoikatuSceneObjectLoader._save_route_point_info(data_stream, route_point, version)
 
         # Write active, loop, visibleLine (version >= 1.0.3)
         if KoikatuSceneObjectLoader._compare_versions(version, "1.0.3") >= 0:
-            data_stream.write(struct.pack("b", int(data.get("active", False))))
-            data_stream.write(struct.pack("b", int(data.get("loop", True))))
-            data_stream.write(struct.pack("b", int(data.get("visibleLine", True))))
+            data_stream.write(struct.pack("b", int(data["active"])))
+            data_stream.write(struct.pack("b", int(data["loop"])))
+            data_stream.write(struct.pack("b", int(data["visibleLine"])))
 
         # Write orient (version >= 1.0.4)
         if KoikatuSceneObjectLoader._compare_versions(version, "1.0.4") >= 0:
-            data_stream.write(struct.pack("i", data.get("orient", 0)))
+            data_stream.write(struct.pack("i", data["orient"]))
 
         # Write color as JSON string (version >= 1.0.4.1)
         if KoikatuSceneObjectLoader._compare_versions(version, "1.0.4.1") >= 0:
-            color = data.get("color", {"r": 0.0, "g": 0.0, "b": 1.0, "a": 1.0})
-            KoikatuSceneObjectLoader._save_color_json(data_stream, color)
+            KoikatuSceneObjectLoader._save_color_json(data_stream, data["color"])
 
     @staticmethod
     def save_camera_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
@@ -1189,12 +1175,12 @@ class KoikatuSceneObjectLoader:
         KoikatuSceneObjectLoader._save_object_info_base(data_stream, data)
 
         # Write name (string)
-        name = data.get("name", "")
+        name = data["name"]
         name_bytes = name.encode("utf-8") if isinstance(name, str) else name
         write_string(data_stream, name_bytes)
 
         # Write active (boolean)
-        data_stream.write(struct.pack("b", int(data.get("active", False))))
+        data_stream.write(struct.pack("b", int(data["active"])))
 
     @staticmethod
     def save_text_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
@@ -1206,21 +1192,19 @@ class KoikatuSceneObjectLoader:
         KoikatuSceneObjectLoader._save_object_info_base(data_stream, data)
 
         # Write id
-        data_stream.write(struct.pack("i", data.get("id", 0)))
+        data_stream.write(struct.pack("i", data["id"]))
 
         # Write color as JSON string
-        color = data.get("color", {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0})
-        KoikatuSceneObjectLoader._save_color_json(data_stream, color)
+        KoikatuSceneObjectLoader._save_color_json(data_stream, data["color"])
 
         # Write outlineColor as JSON string
-        outline_color = data.get("outlineColor", {"r": 0.0, "g": 0.0, "b": 0.0, "a": 1.0})
-        KoikatuSceneObjectLoader._save_color_json(data_stream, outline_color)
+        KoikatuSceneObjectLoader._save_color_json(data_stream, data["outlineColor"])
 
         # Write outlineSize
-        data_stream.write(struct.pack("f", data.get("outlineSize", 1.0)))
+        data_stream.write(struct.pack("f", data["outlineSize"]))
 
         # Write textInfos (MessagePack serialized bytes)
-        text_infos_bytes = data.get("textInfos_raw", b"")
+        text_infos_bytes = data["textInfos_raw"]
         data_stream.write(struct.pack("i", len(text_infos_bytes)))
         data_stream.write(text_infos_bytes)
 

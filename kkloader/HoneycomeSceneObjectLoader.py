@@ -111,11 +111,11 @@ class HoneycomeSceneObjectLoader:
         return {"x": struct.unpack("f", data_stream.read(4))[0], "y": struct.unpack("f", data_stream.read(4))[0], "z": struct.unpack("f", data_stream.read(4))[0]}
 
     @staticmethod
-    def _save_vector3(data_stream: BinaryIO, vector3: Dict[str, float], default: float = 0.0) -> None:
+    def _save_vector3(data_stream: BinaryIO, vector3: Dict[str, float]) -> None:
         """Save a Vector3 (x, y, z) to the data stream"""
-        data_stream.write(struct.pack("f", vector3.get("x", default)))
-        data_stream.write(struct.pack("f", vector3.get("y", default)))
-        data_stream.write(struct.pack("f", vector3.get("z", default)))
+        data_stream.write(struct.pack("f", vector3["x"]))
+        data_stream.write(struct.pack("f", vector3["y"]))
+        data_stream.write(struct.pack("f", vector3["z"]))
 
     @staticmethod
     def parse_color_json(json_str: str) -> Dict[str, float]:
@@ -137,10 +137,10 @@ class HoneycomeSceneObjectLoader:
     @staticmethod
     def _save_color_rgba(data_stream: BinaryIO, color: Dict[str, float]) -> None:
         """Save Color (r, g, b, a) as 4 floats"""
-        data_stream.write(struct.pack("f", color.get("r", 1.0)))
-        data_stream.write(struct.pack("f", color.get("g", 1.0)))
-        data_stream.write(struct.pack("f", color.get("b", 1.0)))
-        data_stream.write(struct.pack("f", color.get("a", 1.0)))
+        data_stream.write(struct.pack("f", color["r"]))
+        data_stream.write(struct.pack("f", color["g"]))
+        data_stream.write(struct.pack("f", color["b"]))
+        data_stream.write(struct.pack("f", color["a"]))
 
     @staticmethod
     def _load_bool_array(data_stream: BinaryIO, count: int) -> list:
@@ -173,25 +173,22 @@ class HoneycomeSceneObjectLoader:
     def _save_object_info_base(data_stream: BinaryIO, data: Dict[str, Any]) -> None:
         """Save ObjectInfo base data (ObjectInfo.Save)"""
         # Write dicKey (int)
-        data_stream.write(struct.pack("i", data.get("dicKey", 0)))
+        data_stream.write(struct.pack("i", data["dicKey"]))
 
         # Write position (Vector3)
-        pos = data.get("position", {"x": 0.0, "y": 0.0, "z": 0.0})
-        HoneycomeSceneObjectLoader._save_vector3(data_stream, pos, default=0.0)
+        HoneycomeSceneObjectLoader._save_vector3(data_stream, data["position"])
 
         # Write rotation (Vector3)
-        rot = data.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0})
-        HoneycomeSceneObjectLoader._save_vector3(data_stream, rot, default=0.0)
+        HoneycomeSceneObjectLoader._save_vector3(data_stream, data["rotation"])
 
         # Write scale (Vector3)
-        scale = data.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0})
-        HoneycomeSceneObjectLoader._save_vector3(data_stream, scale, default=1.0)
+        HoneycomeSceneObjectLoader._save_vector3(data_stream, data["scale"])
 
         # Write treeState
-        data_stream.write(struct.pack("i", data.get("treeState", 0)))
+        data_stream.write(struct.pack("i", data["treeState"]))
 
         # Write visible
-        data_stream.write(struct.pack("b", int(data.get("visible", True))))
+        data_stream.write(struct.pack("b", int(data["visible"])))
 
     # ============================================================
     # 4. COMPONENT DATA HELPERS
@@ -225,13 +222,13 @@ class HoneycomeSceneObjectLoader:
     def save_bone_info(data_stream: BinaryIO, bone_data: Dict[str, Any]) -> None:
         """Save bone info data"""
         # Write dicKey
-        data_stream.write(struct.pack("i", bone_data.get("dicKey", 0)))
+        data_stream.write(struct.pack("i", bone_data["dicKey"]))
 
         # Write changeAmount (position, rotation, scale)
-        change_amount = bone_data.get("changeAmount", {})
-        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount.get("position", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0}))
+        change_amount = bone_data["changeAmount"]
+        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount["position"])
+        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount["rotation"])
+        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount["scale"])
 
     @staticmethod
     def load_pattern_info(data_stream: BinaryIO) -> Dict[str, Any]:
@@ -262,21 +259,21 @@ class HoneycomeSceneObjectLoader:
     def save_pattern_info(data_stream: BinaryIO, pattern_data: Dict[str, Any]) -> None:
         """Save pattern info data (Honeycome version)"""
         # Write unknown float
-        data_stream.write(struct.pack("f", pattern_data.get("unknown_float", 1.0)))
+        data_stream.write(struct.pack("f", pattern_data["unknown_float"]))
 
         # Write key
         data_stream.write(struct.pack("i", pattern_data["key"]))
 
         if pattern_data["key"] == -1:
             # Write pattern_filepath
-            write_string(data_stream, pattern_data.get("pattern_filepath", "").encode("utf-8"))
+            write_string(data_stream, pattern_data["pattern_filepath"].encode("utf-8"))
             # Write unknown bool
-            data_stream.write(struct.pack("b", int(pattern_data.get("unknown_bool", False))))
+            data_stream.write(struct.pack("b", int(pattern_data["unknown_bool"])))
         else:
             # Write clamp
             data_stream.write(struct.pack("b", int(pattern_data["clamp"])))
             # Write unknown bool
-            data_stream.write(struct.pack("b", int(pattern_data.get("unknown_bool", False))))
+            data_stream.write(struct.pack("b", int(pattern_data["unknown_bool"])))
 
         # Write uv (Vector4)
         write_string(data_stream, json.dumps(pattern_data["uv"], separators=(",", ":")).encode("utf-8"))
@@ -314,29 +311,28 @@ class HoneycomeSceneObjectLoader:
         Based on OIRoutePointInfo.Save in C#
         """
         # Write dicKey
-        data_stream.write(struct.pack("i", route_point.get("dicKey", 0)))
+        data_stream.write(struct.pack("i", route_point["dicKey"]))
 
         # Write ChangeAmount (3 Vector3: position, rotation, scale)
-        change_amount = route_point.get("changeAmount", {})
-        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount.get("position", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0}))
+        change_amount = route_point["changeAmount"]
+        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount["position"])
+        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount["rotation"])
+        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount["scale"])
 
         # Write speed
-        data_stream.write(struct.pack("f", route_point.get("speed", 2.0)))
+        data_stream.write(struct.pack("f", route_point["speed"]))
 
         # Write easeType
-        data_stream.write(struct.pack("i", route_point.get("easeType", 0)))
+        data_stream.write(struct.pack("i", route_point["easeType"]))
 
         # Write connection
-        data_stream.write(struct.pack("i", route_point.get("connection", 0)))
+        data_stream.write(struct.pack("i", route_point["connection"]))
 
         # Write aidInfo
-        aid_info = route_point.get("aidInfo", {})
-        HoneycomeSceneObjectLoader._save_route_point_aid_info(data_stream, aid_info)
+        HoneycomeSceneObjectLoader._save_route_point_aid_info(data_stream, route_point["aidInfo"])
 
         # Write link
-        data_stream.write(struct.pack("b", int(route_point.get("link", False))))
+        data_stream.write(struct.pack("b", int(route_point["link"])))
 
     @staticmethod
     def _load_route_point_aid_info(data_stream: BinaryIO) -> Dict[str, Any]:
@@ -368,16 +364,16 @@ class HoneycomeSceneObjectLoader:
         Based on OIRoutePointAidInfo.Save in C#
         """
         # Write dicKey
-        data_stream.write(struct.pack("i", aid_info.get("dicKey", 0)))
+        data_stream.write(struct.pack("i", aid_info["dicKey"]))
 
         # Write ChangeAmount (3 Vector3: position, rotation, scale)
-        change_amount = aid_info.get("changeAmount", {})
-        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount.get("position", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0}))
+        change_amount = aid_info["changeAmount"]
+        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount["position"])
+        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount["rotation"])
+        HoneycomeSceneObjectLoader._save_vector3(data_stream, change_amount["scale"])
 
         # Write isInit
-        data_stream.write(struct.pack("b", int(aid_info.get("isInit", False))))
+        data_stream.write(struct.pack("b", int(aid_info["isInit"])))
 
     # ============================================================
     # 5. OBJECT TYPE LOADERS
@@ -745,35 +741,28 @@ class HoneycomeSceneObjectLoader:
         HoneycomeSceneObjectLoader._save_object_info_base(data_stream, data)
 
         # Write sex
-        data_stream.write(struct.pack("i", data.get("sex", 0)))
+        data_stream.write(struct.pack("i", data["sex"]))
 
-        # Save character file data using KoikatuCharaData
-        # This corresponds to ChaFileControl.SaveCharaFile in C#
-        chara_data = data.get("character")
-        if chara_data is not None:
-            chara_bytes = bytes(chara_data)
-            data_stream.write(chara_bytes)
-        else:
-            # If no character data, we need to write empty character data
-            # This should not normally happen in valid data
-            raise ValueError("Character data is missing in save_char_info")
+        # Save character file data
+        chara_bytes = bytes(data["character"])
+        data_stream.write(chara_bytes)
 
         # Write bones dictionary
-        bones = data.get("bones", {})
+        bones = data["bones"]
         data_stream.write(struct.pack("i", len(bones)))
         for bone_key, bone_data in bones.items():
             data_stream.write(struct.pack("i", bone_key))
             HoneycomeSceneObjectLoader.save_bone_info(data_stream, bone_data)
 
         # Write IK targets dictionary
-        ik_targets = data.get("ik_targets", {})
+        ik_targets = data["ik_targets"]
         data_stream.write(struct.pack("i", len(ik_targets)))
         for ik_key, ik_data in ik_targets.items():
             data_stream.write(struct.pack("i", ik_key))
             HoneycomeSceneObjectLoader.save_bone_info(data_stream, ik_data)
 
         # Write child objects dictionary
-        child = data.get("child", {})
+        child = data["child"]
         data_stream.write(struct.pack("i", len(child)))
         for child_key, child_list in child.items():
             data_stream.write(struct.pack("i", child_key))
@@ -782,138 +771,136 @@ class HoneycomeSceneObjectLoader:
                 HoneycomeSceneObjectLoader.save_child_objects(data_stream, child_obj, version)
 
         # Write kinematic mode
-        data_stream.write(struct.pack("i", data.get("kinematic_mode", 0)))
+        data_stream.write(struct.pack("i", data["kinematic_mode"]))
 
         # Write anime info
-        anime_info = data.get("anime_info", {})
-        data_stream.write(struct.pack("i", anime_info.get("group", -1)))
-        data_stream.write(struct.pack("i", anime_info.get("category", -1)))
-        data_stream.write(struct.pack("i", anime_info.get("no", -1)))
+        anime_info = data["anime_info"]
+        data_stream.write(struct.pack("i", anime_info["group"]))
+        data_stream.write(struct.pack("i", anime_info["category"]))
+        data_stream.write(struct.pack("i", anime_info["no"]))
 
         # Write hand patterns
-        hand_patterns = data.get("hand_patterns", [0, 0])
+        hand_patterns = data["hand_patterns"]
         for i in range(2):
-            data_stream.write(struct.pack("i", hand_patterns[i] if i < len(hand_patterns) else 0))
+            data_stream.write(struct.pack("i", hand_patterns[i]))
 
         # Write nipple
-        data_stream.write(struct.pack("f", data.get("nipple", 0.0)))
+        data_stream.write(struct.pack("f", data["nipple"]))
 
         # Write siru (5 bytes)
-        siru = data.get("siru", b"\x00" * 5)
-        data_stream.write(siru if len(siru) == 5 else b"\x00" * 5)
+        data_stream.write(data["siru"])
 
         # Write mouth open
-        data_stream.write(struct.pack("f", data.get("mouth_open", 0.0)))
+        data_stream.write(struct.pack("f", data["mouth_open"]))
 
         # Write lip sync
-        data_stream.write(struct.pack("b", int(data.get("lip_sync", True))))
+        data_stream.write(struct.pack("b", int(data["lip_sync"])))
 
         # Write unknown bytes (4 bytes)
         data_stream.write(data["unknown_bytes_1"])
 
         # Write look at target (LookAtTargetInfo.Save - base.Save with _other=false)
-        lookAtTarget = data.get("lookAtTarget", {})
-        data_stream.write(struct.pack("i", lookAtTarget.get("dicKey", 0)))
-        HoneycomeSceneObjectLoader._save_vector3(data_stream, lookAtTarget.get("position", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        HoneycomeSceneObjectLoader._save_vector3(data_stream, lookAtTarget.get("rotation", {"x": 0.0, "y": 0.0, "z": 0.0}))
-        HoneycomeSceneObjectLoader._save_vector3(data_stream, lookAtTarget.get("scale", {"x": 1.0, "y": 1.0, "z": 1.0}))
+        lookAtTarget = data["lookAtTarget"]
+        data_stream.write(struct.pack("i", lookAtTarget["dicKey"]))
+        HoneycomeSceneObjectLoader._save_vector3(data_stream, lookAtTarget["position"])
+        HoneycomeSceneObjectLoader._save_vector3(data_stream, lookAtTarget["rotation"])
+        HoneycomeSceneObjectLoader._save_vector3(data_stream, lookAtTarget["scale"])
 
         # Write unknown bytes (14 bytes)
         data_stream.write(data["unknown_bytes_2"])
 
         # Write enable IK
-        data_stream.write(struct.pack("b", int(data.get("enable_ik", False))))
+        data_stream.write(struct.pack("b", int(data["enable_ik"])))
 
         # Write active IK (5 bools)
-        active_ik = data.get("active_ik", [True] * 5)
+        active_ik = data["active_ik"]
         for i in range(5):
-            data_stream.write(struct.pack("b", int(active_ik[i] if i < len(active_ik) else True)))
+            data_stream.write(struct.pack("b", int(active_ik[i])))
 
         # Write enable FK
-        data_stream.write(struct.pack("b", int(data.get("enable_fk", False))))
+        data_stream.write(struct.pack("b", int(data["enable_fk"])))
 
         # Write active FK (7 bools)
-        active_fk = data.get("active_fk", [False, True, False, True, False, False, False])
+        active_fk = data["active_fk"]
         for i in range(7):
-            data_stream.write(struct.pack("b", int(active_fk[i] if i < len(active_fk) else False)))
+            data_stream.write(struct.pack("b", int(active_fk[i])))
 
         # Write expression
         expression_count = 9
-        expression = data.get("expression", [False] * expression_count)
+        expression = data["expression"]
         for i in range(expression_count):
-            data_stream.write(struct.pack("b", int(expression[i] if i < len(expression) else False)))
+            data_stream.write(struct.pack("b", int(expression[i])))
 
         # Write anime speed
-        data_stream.write(struct.pack("f", data.get("anime_speed", 1.0)))
+        data_stream.write(struct.pack("f", data["anime_speed"]))
 
         # Write anime pattern
-        data_stream.write(struct.pack("f", data.get("anime_pattern", 0.0)))
+        data_stream.write(struct.pack("f", data["anime_pattern"]))
 
         # Write anime option visible
-        data_stream.write(struct.pack("b", int(data.get("anime_option_visible", True))))
+        data_stream.write(struct.pack("b", int(data["anime_option_visible"])))
 
         # Write is anime force loop
-        data_stream.write(struct.pack("b", int(data.get("is_anime_force_loop", False))))
+        data_stream.write(struct.pack("b", int(data["is_anime_force_loop"])))
 
         # Write unknown ints
         data_stream.write(struct.pack("i", data["unknown_int_1"]))
         data_stream.write(struct.pack("i", data["unknown_int_2"]))
 
         # Write voice ctrl (VoiceCtrl.Save)
-        voiceCtrl = data.get("voiceCtrl", {})
-        voice_list = voiceCtrl.get("list", [])
+        voiceCtrl = data["voiceCtrl"]
+        voice_list = voiceCtrl["list"]
         data_stream.write(struct.pack("i", len(voice_list)))
         for voice_info in voice_list:
-            data_stream.write(struct.pack("i", voice_info.get("group", 0)))
-            data_stream.write(struct.pack("i", voice_info.get("category", 0)))
-            data_stream.write(struct.pack("i", voice_info.get("no", 0)))
-        data_stream.write(struct.pack("b", int(voiceCtrl.get("repeat", False))))
+            data_stream.write(struct.pack("i", voice_info["group"]))
+            data_stream.write(struct.pack("i", voice_info["category"]))
+            data_stream.write(struct.pack("i", voice_info["no"]))
+        data_stream.write(struct.pack("b", int(voiceCtrl["repeat"])))
 
         # Write visible son
-        data_stream.write(struct.pack("b", int(data.get("visible_son", False))))
+        data_stream.write(struct.pack("b", int(data["visible_son"])))
 
         # Write son length
-        data_stream.write(struct.pack("f", data.get("son_length", 1.0)))
+        data_stream.write(struct.pack("f", data["son_length"]))
 
         # Write visible simple
-        data_stream.write(struct.pack("b", int(data.get("visible_simple", False))))
+        data_stream.write(struct.pack("b", int(data["visible_simple"])))
 
         # Write simple color as JSON string (1-byte length prefix)
-        simple_color = data.get("simple_color", {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0})
-        simple_color_bytes = json.dumps(simple_color, separators=(",", ":")).encode("utf-8")
+        simple_color_bytes = json.dumps(data["simple_color"], separators=(",", ":")).encode("utf-8")
         data_stream.write(struct.pack("b", len(simple_color_bytes)))
         data_stream.write(simple_color_bytes)
 
         # Write anime option param (2 floats)
-        anime_option_param = data.get("anime_option_param", [0.0, 0.0])
+        anime_option_param = data["anime_option_param"]
         for i in range(2):
-            data_stream.write(struct.pack("f", anime_option_param[i] if i < len(anime_option_param) else 0.0))
+            data_stream.write(struct.pack("f", anime_option_param[i]))
 
         # Write unknown int
         data_stream.write(struct.pack("i", data["unknown_int_3"]))
 
         # Write neck byte data
-        neck_byte_data = data.get("neck_byte_data", b"")
+        neck_byte_data = data["neck_byte_data"]
         data_stream.write(struct.pack("i", len(neck_byte_data)))
         data_stream.write(neck_byte_data)
 
         # Write eyes byte data
-        eyes_byte_data = data.get("eyes_byte_data", b"")
+        eyes_byte_data = data["eyes_byte_data"]
         data_stream.write(struct.pack("i", len(eyes_byte_data)))
         data_stream.write(eyes_byte_data)
 
         # Write anime normalized time
-        data_stream.write(struct.pack("f", data.get("anime_normalized_time", 0.0)))
+        data_stream.write(struct.pack("f", data["anime_normalized_time"]))
 
         # Write dic access group
-        dic_access_group = data.get("dic_access_group", {})
+        dic_access_group = data["dic_access_group"]
         data_stream.write(struct.pack("i", len(dic_access_group)))
         for key, value in dic_access_group.items():
             data_stream.write(struct.pack("i", key))
             data_stream.write(struct.pack("i", value))
 
         # Write dic access no
-        dic_access_no = data.get("dic_access_no", {})
+        dic_access_no = data["dic_access_no"]
         data_stream.write(struct.pack("i", len(dic_access_no)))
         for key, value in dic_access_no.items():
             data_stream.write(struct.pack("i", key))
@@ -970,8 +957,9 @@ class HoneycomeSceneObjectLoader:
         data_stream.write(struct.pack("b", int(data["unknown_10"])))
         data_stream.write(struct.pack("f", data["anime_normalized_time"]))
 
-        data_stream.write(struct.pack("i", len(data.get("child", []))))
-        for child in data.get("child", []):
+        child_list = data["child"]
+        data_stream.write(struct.pack("i", len(child_list)))
+        for child in child_list:
             HoneycomeSceneObjectLoader.save_child_objects(data_stream, child, version)
 
     @staticmethod
@@ -983,12 +971,12 @@ class HoneycomeSceneObjectLoader:
         HoneycomeSceneObjectLoader._save_object_info_base(data_stream, data)
 
         # Write name (string)
-        name = data.get("name", "")
+        name = data["name"]
         name_bytes = name.encode("utf-8") if isinstance(name, str) else name
         write_string(data_stream, name_bytes)
 
         # Write child count
-        child_list = data.get("child", [])
+        child_list = data["child"]
         data_stream.write(struct.pack("i", len(child_list)))
 
         # Write each child object
@@ -1005,22 +993,21 @@ class HoneycomeSceneObjectLoader:
         HoneycomeSceneObjectLoader._save_object_info_base(data_stream, data)
 
         # Write no
-        data_stream.write(struct.pack("i", data.get("no", 0)))
+        data_stream.write(struct.pack("i", data["no"]))
 
         # Write unknown_bytes (2 bytes)
         data_stream.write(data["unknown_bytes"])
 
         # Write color as JSON string
-        color = data.get("color", {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0})
-        HoneycomeSceneObjectLoader._save_color_json(data_stream, color)
+        HoneycomeSceneObjectLoader._save_color_json(data_stream, data["color"])
 
         # Write light/shadow settings
-        data_stream.write(struct.pack("f", data.get("intensity", 1.0)))
-        data_stream.write(struct.pack("f", data.get("range", 10.0)))
-        data_stream.write(struct.pack("f", data.get("outsideSpotAngle", 30.0)))
-        data_stream.write(struct.pack("f", data.get("insideSpotAngle", 30.0)))
-        data_stream.write(struct.pack("b", int(data.get("shadow", True))))
-        data_stream.write(struct.pack("f", data.get("shadowStrength", 1.0)))
+        data_stream.write(struct.pack("f", data["intensity"]))
+        data_stream.write(struct.pack("f", data["range"]))
+        data_stream.write(struct.pack("f", data["outsideSpotAngle"]))
+        data_stream.write(struct.pack("f", data["insideSpotAngle"]))
+        data_stream.write(struct.pack("b", int(data["shadow"])))
+        data_stream.write(struct.pack("f", data["shadowStrength"]))
 
     @staticmethod
     def save_route_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
@@ -1032,33 +1019,32 @@ class HoneycomeSceneObjectLoader:
         HoneycomeSceneObjectLoader._save_object_info_base(data_stream, data)
 
         # Write name (string)
-        name = data.get("name", "")
+        name = data["name"]
         name_bytes = name.encode("utf-8") if isinstance(name, str) else name
         write_string(data_stream, name_bytes)
 
         # Write child count and children
-        child_list = data.get("child", [])
+        child_list = data["child"]
         data_stream.write(struct.pack("i", len(child_list)))
         for child in child_list:
             HoneycomeSceneObjectLoader.save_child_objects(data_stream, child, version)
 
         # Write route points count and route points
-        route_points = data.get("route_points", [])
+        route_points = data["route_points"]
         data_stream.write(struct.pack("i", len(route_points)))
         for route_point in route_points:
             HoneycomeSceneObjectLoader._save_route_point_info(data_stream, route_point, version)
 
         # Write active, loop, visibleLine
-        data_stream.write(struct.pack("b", int(data.get("active", False))))
-        data_stream.write(struct.pack("b", int(data.get("loop", True))))
-        data_stream.write(struct.pack("b", int(data.get("visibleLine", True))))
+        data_stream.write(struct.pack("b", int(data["active"])))
+        data_stream.write(struct.pack("b", int(data["loop"])))
+        data_stream.write(struct.pack("b", int(data["visibleLine"])))
 
         # Write orient
-        data_stream.write(struct.pack("i", data.get("orient", 0)))
+        data_stream.write(struct.pack("i", data["orient"]))
 
         # Write color as JSON string
-        color = data.get("color", {"r": 0.0, "g": 0.0, "b": 1.0, "a": 1.0})
-        HoneycomeSceneObjectLoader._save_color_json(data_stream, color)
+        HoneycomeSceneObjectLoader._save_color_json(data_stream, data["color"])
 
     @staticmethod
     def save_camera_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
@@ -1070,12 +1056,12 @@ class HoneycomeSceneObjectLoader:
         HoneycomeSceneObjectLoader._save_object_info_base(data_stream, data)
 
         # Write name (string)
-        name = data.get("name", "")
+        name = data["name"]
         name_bytes = name.encode("utf-8") if isinstance(name, str) else name
         write_string(data_stream, name_bytes)
 
         # Write active (boolean)
-        data_stream.write(struct.pack("b", int(data.get("active", False))))
+        data_stream.write(struct.pack("b", int(data["active"])))
 
     # ============================================================
     # 7. CHILD OBJECT HANDLING

@@ -12,7 +12,7 @@ You can install the module from [PyPI](https://pypi.org/project/kkloader/).
 ```
 $ pip install kkloader
 ```
-If this doesn't work, try the following command (this may be for Windows users).
+If this doesn't work, try the following command (this is typically needed for Windows users).
 ```
 $ python -m pip install kkloader
 ```
@@ -22,11 +22,11 @@ If you just want to quickly try out this module, you can click the "Open In Cola
 # Basic Usage
 ```python
 $ python
->>> from kkloader import KoikatuCharaData # Load the module.
+>>> from kkloader import KoikatuCharaData # Import the module.
 >>> kc = KoikatuCharaData.load("./data/kk_chara.png") # Load character data.
 >>> kc["Parameter"]["nickname"] # Print the character's nickname.
 'かずのん'
->>> kc["Parameter"]["nickname"] = "chikarin" # Rename the nickname.
+>>> kc["Parameter"]["nickname"] = "chikarin" # Change the nickname.
 >>> kc.save("./kk_chara_modified.png") # Save to `kk_chara_modified.png`.
 ```
 That's it! :)
@@ -41,7 +41,7 @@ That's it! :)
   - `SummerVacationCharaData`
   - `SummerVacationSaveData`
   - `AicomiCharaData`
-  - `HoneycomeSceneData` (compatible with DigitalCraft as a whole)
+  - `HoneycomeSceneData` (also compatible with DigitalCraft)
 - Supports loading only:
   - `KoikatuSaveData`
   - `EmocreMapData`
@@ -49,9 +49,9 @@ That's it! :)
 
 Any class can be imported with `from kkloader import KoikatuCharaData` and data can be loaded using the `.load(filename)` method.
 
-# Mechanism of the Blockdata
+# How Block Data Works
 
-Koikatu character data consists of several *block data* sections. Each *block data* contains various character parameters. A typical Koikatsu character data includes the following block data:
+Koikatu character data consists of several *block data* sections. Each *block data* contains various character parameters. A typical Koikatu character data includes the following block data:
 
 | name of blockdata | description                                                  |
 | ----------------- | ------------------------------------------------------------ |
@@ -60,7 +60,7 @@ Koikatu character data consists of several *block data* sections. Each *block da
 | Parameter         | Values for character's name, birthday, preferences, etc.     |
 | Status            | Values for clothed states, etc. (Usage in the game is unclear) |
 | About             | userID & dataID (added from Koikatu Sunshine)                |
-| KKEx              | Values used in MOD                                           |
+| KKEx              | Data used by mods                                            |
 
 You can check which block data is present in `blockdata` from the `KoikatuCharaData` object:
 ```
@@ -69,7 +69,7 @@ You can check which block data is present in `blockdata` from the `KoikatuCharaD
 ```
 If there is block data in an unknown format, it can be found using `unknown_blockdata`.
 
-### Access to Blockdata
+### Accessing Block Data
 The block data can be accessed either as a member variable of the `KoikatuCharaData` class or as a dictionary.
 ```python
 >>> kc.Custom
@@ -142,7 +142,7 @@ If you add `include_image=True` to the `save_json` function's arguments, base64-
 
 # Recipes
 
-### Rename Character's Name
+### Change Character Name
 ```python
 from kkloader import KoikatuCharaData
 
@@ -153,7 +153,7 @@ k["Parameter"]["nickname"] = "ちかりん"
 k.save("./data/kk_chara_modified")
 ```
 
-### Set the Height of Character to 50
+### Set Character Height to 50
 ```python
 from kkloader import KoikatuCharaData
 
@@ -236,7 +236,7 @@ Various examples using this module can be found in [this repository](https://git
 
 1. Fork the repository and pull the latest changes.
 2. Run `make install` to install the dependencies.
-3. Create a new branch and make changes the code.
+3. Create a new branch and make changes to the code.
 4. Run `make format` and `make check`
 5. Once `make check` passes, push the code and open a pull request on the repository.
 

@@ -1,3 +1,5 @@
+"""Koikatu scene object load/save helpers."""
+
 import json
 import struct
 from typing import Any, BinaryIO, Dict
@@ -119,7 +121,7 @@ class KoikatuSceneObjectLoader:
         write_string(data_stream, color_bytes)
 
     @staticmethod
-    def _load_bool_array(data_stream: BinaryIO, count: int) -> list:
+    def _load_bool_array(data_stream: BinaryIO, count: int) -> list[bool]:
         """Load an array of boolean values from the data stream"""
         return [bool(struct.unpack("b", data_stream.read(1))[0]) for _ in range(count)]
 
@@ -1222,7 +1224,7 @@ class KoikatuSceneObjectLoader:
     """
 
     @staticmethod
-    def load_child_objects(data_stream: BinaryIO, version: str = None) -> list:
+    def load_child_objects(data_stream: BinaryIO, version: str = None) -> list[Dict[str, Any]]:
         """
         Load child objects recursively
         Based on ObjectInfoAssist.LoadChild in C#

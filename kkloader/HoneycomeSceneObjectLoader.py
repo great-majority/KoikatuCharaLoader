@@ -1107,4 +1107,3 @@ class HoneycomeSceneObjectLoader:
 
         # Dispatch to appropriate save function based on type
         HoneycomeSceneObjectLoader._dispatch_save(data_stream, child_data, version)
-

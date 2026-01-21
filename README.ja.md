@@ -206,6 +206,28 @@ for key, obj in scene.objects.items():
 scene.save("./data/kk_scene_modified.png")
 ```
 
+### シーン内の全オブジェクトを再帰的に列挙する
+`walk()`メソッドを使うと、子オブジェクト（キャラクターに装着されたアイテムやフォルダ内のオブジェクトなど）を含む全てのオブジェクトを再帰的に列挙できます。
+
+```python
+from kkloader import KoikatuSceneData
+
+scene = KoikatuSceneData.load("./data/kk_scene.png")
+
+# 全オブジェクトをシンプルに列挙
+for key, obj in scene.walk():
+    obj_type = obj["type"]
+    print(f"Key: {key}, Type: {obj_type}")
+
+# 深さ情報付きで列挙（階層構造の可視化に便利）
+for key, obj, depth in scene.walk(include_depth=True):
+    indent = "  " * depth
+    obj_type = obj["type"]
+    print(f"{indent}[depth={depth}] Key: {key}, Type: {obj_type}")
+```
+
+オブジェクトタイプ: 0=Character, 1=Item, 2=Light, 3=Folder, 4=Route, 5=Camera, 7=Text
+
 ### その他
 
 このモジュールを使った色々な例が [このリポジトリ](https://github.com/great-majority/kk-snippets) にあり、さらに [このサイト](https://kk-snippets.streamlit.app/) で使うこともできます。

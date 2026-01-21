@@ -148,6 +148,74 @@ class HoneycomeSceneData:
 
         return data_stream.getvalue()
 
+    def walk(self, include_depth: bool = False):
+        """
+        Recursively iterate over all objects in the scene, including nested child objects.
+
+        This method traverses the entire object hierarchy, yielding each object
+        in depth-first order. It handles the different child structures for
+        different object types:
+        - Character (type 0): child is Dict[int, List[ObjectInfo]]
+        - Item (type 1), Folder (type 3), Route (type 4): child is List[ObjectInfo]
+        - Light (type 2), Camera (type 5): no children
+
+        Args:
+            include_depth: If True, yields (key, obj_info, depth) tuples.
+                          If False, yields (key, obj_info) tuples.
+
+        Yields:
+            If include_depth is False:
+                tuple: (key, obj_info) where key is the object's key/index
+                       and obj_info is the object dictionary with 'type' and 'data'.
+            If include_depth is True:
+                tuple: (key, obj_info, depth) where depth indicates nesting level
+                       (0 for top-level objects).
+
+        Example:
+            >>> scene = HoneycomeSceneData.load("scene.png")
+            >>> for key, obj in scene.walk():
+            ...     print(f"Object {key}: type={obj['type']}")
+            >>> # With depth:
+            >>> for key, obj, depth in scene.walk(include_depth=True):
+            ...     print(f"{'  ' * depth}Object {key}: type={obj['type']}")
+        """
+
+        def _walk_children(obj_info, depth):
+            """Recursively walk through child objects."""
+            data = obj_info.get("data", {})
+            child = data.get("child")
+
+            if child is None:
+                return
+
+            obj_type = obj_info.get("type")
+
+            # Character type (0) has Dict[int, List[ObjectInfo]] structure
+            if obj_type == 0:
+                for child_key, child_list in child.items():
+                    for idx, child_obj in enumerate(child_list):
+                        if include_depth:
+                            yield (child_key, idx), child_obj, depth + 1
+                        else:
+                            yield (child_key, idx), child_obj
+                        yield from _walk_children(child_obj, depth + 1)
+            else:
+                # Item (1), Folder (3), Route (4) have List[ObjectInfo] structure
+                for idx, child_obj in enumerate(child):
+                    if include_depth:
+                        yield idx, child_obj, depth + 1
+                    else:
+                        yield idx, child_obj
+                    yield from _walk_children(child_obj, depth + 1)
+
+        # Iterate over top-level objects
+        for key, obj_info in self.objects.items():
+            if include_depth:
+                yield key, obj_info, 0
+            else:
+                yield key, obj_info
+            yield from _walk_children(obj_info, 0)
+
     def to_dict(self):
         """Convert the scene data to a dictionary"""
         return {

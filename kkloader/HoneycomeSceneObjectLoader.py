@@ -78,7 +78,7 @@ class HoneycomeSceneObjectLoader:
         return chara_class
 
     @staticmethod
-    def _dispatch_load(data_stream: BinaryIO, obj_type: int, obj_info: Dict[str, Any], version: str = None) -> None:
+    def _dispatch_load(data_stream: BinaryIO, obj_type: int, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Dispatch to appropriate load method based on object type"""
         method_name = HoneycomeSceneObjectLoader._LOAD_DISPATCH.get(obj_type)
         if method_name is None:
@@ -87,7 +87,7 @@ class HoneycomeSceneObjectLoader:
         method(data_stream, obj_info, version)
 
     @staticmethod
-    def _dispatch_save(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def _dispatch_save(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Dispatch to appropriate save method based on object type"""
         obj_type = obj_info.get("type", -1)
         method_name = HoneycomeSceneObjectLoader._SAVE_DISPATCH.get(obj_type)
@@ -280,7 +280,7 @@ class HoneycomeSceneObjectLoader:
         write_string(data_stream, json.dumps(pattern_data["uv"], separators=(",", ":")).encode("utf-8"))
 
     @staticmethod
-    def _load_route_point_info(data_stream: BinaryIO, version: str = None) -> Dict[str, Any]:
+    def _load_route_point_info(data_stream: BinaryIO, version: str | None = None) -> Dict[str, Any]:
         """
         Load OIRoutePointInfo data with version-specific handling
         Based on OIRoutePointInfo.Load in C#
@@ -306,7 +306,7 @@ class HoneycomeSceneObjectLoader:
         return route_point
 
     @staticmethod
-    def _save_route_point_info(data_stream: BinaryIO, route_point: Dict[str, Any], version: str = None) -> None:
+    def _save_route_point_info(data_stream: BinaryIO, route_point: Dict[str, Any], version: str | None = None) -> None:
         """
         Save OIRoutePointInfo data
         Based on OIRoutePointInfo.Save in C#
@@ -391,7 +391,7 @@ class HoneycomeSceneObjectLoader:
     # All methods populate the obj_info dictionary with loaded data.
 
     @staticmethod
-    def load_char_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def load_char_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Load character info data"""
         # Based on OICharInfo.Load in C#
         # Load ObjectInfo base data (dicKey, position, rotation, scale, treeState, visible)
@@ -571,7 +571,7 @@ class HoneycomeSceneObjectLoader:
         obj_info["data"] = data
 
     @staticmethod
-    def load_item_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def load_item_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         data = HoneycomeSceneObjectLoader._load_object_info_base(data_stream)
 
         data["unknown_1"] = load_type(data_stream, "i")
@@ -625,7 +625,7 @@ class HoneycomeSceneObjectLoader:
         obj_info["data"] = data
 
     @staticmethod
-    def load_folder_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def load_folder_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Load folder info data"""
         # Load ObjectInfo base data
         data = HoneycomeSceneObjectLoader._load_object_info_base(data_stream)
@@ -640,7 +640,7 @@ class HoneycomeSceneObjectLoader:
         obj_info["data"] = data
 
     @staticmethod
-    def load_light_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def load_light_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """
         Load light info data
         Based on OILightInfo.Load in C#
@@ -666,7 +666,7 @@ class HoneycomeSceneObjectLoader:
         obj_info["data"] = data
 
     @staticmethod
-    def load_route_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def load_route_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """
         Load route info data with full version-specific handling
         Based on OIRouteInfo.Load in C#
@@ -699,7 +699,7 @@ class HoneycomeSceneObjectLoader:
         obj_info["data"] = data
 
     @staticmethod
-    def load_camera_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def load_camera_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """
         Load camera info data
         Based on OICameraInfo.Load in C#
@@ -729,7 +729,7 @@ class HoneycomeSceneObjectLoader:
     # All methods write data from the obj_info dictionary to binary format.
 
     @staticmethod
-    def save_char_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def save_char_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Save character info data"""
         # Based on OICharInfo.Save in C#
         data = obj_info["data"]
@@ -904,7 +904,7 @@ class HoneycomeSceneObjectLoader:
             data_stream.write(struct.pack("i", value))
 
     @staticmethod
-    def save_item_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def save_item_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         data = obj_info["data"]
         HoneycomeSceneObjectLoader._save_object_info_base(data_stream, data)
 
@@ -960,7 +960,7 @@ class HoneycomeSceneObjectLoader:
             HoneycomeSceneObjectLoader.save_child_objects(data_stream, child, version)
 
     @staticmethod
-    def save_folder_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def save_folder_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Save folder info data"""
         data = obj_info["data"]
 
@@ -981,7 +981,7 @@ class HoneycomeSceneObjectLoader:
             HoneycomeSceneObjectLoader.save_child_objects(data_stream, child, version)
 
     @staticmethod
-    def save_light_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def save_light_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Save light info data"""
         # Based on OILightInfo.Save in C#
         data = obj_info["data"]
@@ -1007,7 +1007,7 @@ class HoneycomeSceneObjectLoader:
         data_stream.write(struct.pack("f", data["shadowStrength"]))
 
     @staticmethod
-    def save_route_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def save_route_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Save route info data"""
         # Based on OIRouteInfo.Save in C#
         data = obj_info["data"]
@@ -1044,7 +1044,7 @@ class HoneycomeSceneObjectLoader:
         HoneycomeSceneObjectLoader._save_color_json(data_stream, data["color"])
 
     @staticmethod
-    def save_camera_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def save_camera_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Save camera info data"""
         # Based on OICameraInfo.Save in C#
         data = obj_info["data"]
@@ -1070,7 +1070,7 @@ class HoneycomeSceneObjectLoader:
     """
 
     @staticmethod
-    def load_child_objects(data_stream: BinaryIO, version: str = None) -> list:
+    def load_child_objects(data_stream: BinaryIO, version: str | None = None) -> list:
         """
         Load child objects recursively
         Based on ObjectInfoAssist.LoadChild in C#
@@ -1095,7 +1095,7 @@ class HoneycomeSceneObjectLoader:
         return child_list
 
     @staticmethod
-    def save_child_objects(data_stream: BinaryIO, child_data: Dict[str, Any], version: str = None) -> None:
+    def save_child_objects(data_stream: BinaryIO, child_data: Dict[str, Any], version: str | None = None) -> None:
         """Save child object data"""
         obj_type = child_data.get("type", -1)
 

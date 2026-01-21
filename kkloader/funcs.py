@@ -4,15 +4,14 @@ This module provides low-level functions for reading and writing binary data,
 MessagePack serialization with special handling for KKEx data, and PNG image extraction.
 """
 
-import io
 import struct
-from typing import Any
+from typing import Any, BinaryIO
 
 from msgpack import packb, unpackb
 from msgpack.fallback import Packer as PurePacker
 
 
-def load_length(data_stream: io.BytesIO, struct_type: str) -> bytes:
+def load_length(data_stream: BinaryIO, struct_type: str) -> bytes:
     """Read length-prefixed data from a binary stream.
 
     Args:
@@ -26,7 +25,7 @@ def load_length(data_stream: io.BytesIO, struct_type: str) -> bytes:
     return data_stream.read(length)
 
 
-def load_string(data_stream: io.BytesIO) -> bytes:
+def load_string(data_stream: BinaryIO) -> bytes:
     """Read a variable-length encoded string from a binary stream.
 
     Uses 7-bit variable-length encoding where the MSB indicates continuation.
@@ -49,7 +48,7 @@ def load_string(data_stream: io.BytesIO) -> bytes:
     return data
 
 
-def load_type(data_stream: io.BytesIO, struct_type: str) -> Any:
+def load_type(data_stream: BinaryIO, struct_type: str) -> Any:
     """Read a single value of a specific type from a binary stream.
 
     Args:
@@ -62,7 +61,7 @@ def load_type(data_stream: io.BytesIO, struct_type: str) -> Any:
     return struct.unpack(struct_type, data_stream.read(struct.calcsize(struct_type)))[0]
 
 
-def write_string(data_stream: io.BytesIO, value: bytes) -> None:
+def write_string(data_stream: BinaryIO, value: bytes) -> None:
     """Write a variable-length encoded string to a binary stream.
 
     Uses 7-bit variable-length encoding where the MSB indicates continuation.
@@ -204,7 +203,7 @@ def get_png_length(png_data: bytes, orig: int = 0) -> int:
     return idx - orig
 
 
-def get_png(data_stream: io.BytesIO) -> bytes:
+def get_png(data_stream: BinaryIO) -> bytes:
     """Extract a PNG image from a binary stream.
 
     Reads from the current position until the IEND chunk is found.

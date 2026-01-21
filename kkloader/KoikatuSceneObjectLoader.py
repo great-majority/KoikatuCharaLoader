@@ -53,7 +53,7 @@ class KoikatuSceneObjectLoader:
     }
 
     @staticmethod
-    def _dispatch_load(data_stream: BinaryIO, obj_type: int, obj_info: Dict[str, Any], version: str = None) -> None:
+    def _dispatch_load(data_stream: BinaryIO, obj_type: int, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Dispatch to appropriate load method based on object type"""
         method_name = KoikatuSceneObjectLoader._LOAD_DISPATCH.get(obj_type)
         if method_name is None:
@@ -62,7 +62,7 @@ class KoikatuSceneObjectLoader:
         method(data_stream, obj_info, version)
 
     @staticmethod
-    def _dispatch_save(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def _dispatch_save(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Dispatch to appropriate save method based on object type"""
         obj_type = obj_info.get("type", -1)
         method_name = KoikatuSceneObjectLoader._SAVE_DISPATCH.get(obj_type)
@@ -284,7 +284,7 @@ class KoikatuSceneObjectLoader:
         data_stream.write(struct.pack("f", pattern_data["rot"]))
 
     @staticmethod
-    def _load_route_point_info(data_stream: BinaryIO, version: str = None) -> Dict[str, Any]:
+    def _load_route_point_info(data_stream: BinaryIO, version: str | None = None) -> Dict[str, Any]:
         """
         Load OIRoutePointInfo data with version-specific handling
         Based on OIRoutePointInfo.Load in C# (lines 50-75)
@@ -322,7 +322,7 @@ class KoikatuSceneObjectLoader:
         return route_point
 
     @staticmethod
-    def _save_route_point_info(data_stream: BinaryIO, route_point: Dict[str, Any], version: str = None) -> None:
+    def _save_route_point_info(data_stream: BinaryIO, route_point: Dict[str, Any], version: str | None = None) -> None:
         """
         Save OIRoutePointInfo data
         Based on OIRoutePointInfo.Save in C#
@@ -414,7 +414,7 @@ class KoikatuSceneObjectLoader:
     """
 
     @staticmethod
-    def load_char_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def load_char_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Load character info data"""
         # Based on OICharInfo.Load in C#
         # Load ObjectInfo base data (dicKey, position, rotation, scale, treeState, visible)
@@ -586,7 +586,7 @@ class KoikatuSceneObjectLoader:
         obj_info["data"] = data
 
     @staticmethod
-    def load_item_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def load_item_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Load item info data"""
         # Based on OIItemInfo.Load in C#
         # Load ObjectInfo base data (dicKey, position, rotation, scale, treeState, visible)
@@ -695,7 +695,7 @@ class KoikatuSceneObjectLoader:
         obj_info["data"] = data
 
     @staticmethod
-    def load_light_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def load_light_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """
         Load light info data
         Based on OILightInfo.Load in C#
@@ -719,7 +719,7 @@ class KoikatuSceneObjectLoader:
         obj_info["data"] = data
 
     @staticmethod
-    def load_folder_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def load_folder_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """
         Load folder info data
         Based on OIFolderInfo.Load in C#
@@ -737,7 +737,7 @@ class KoikatuSceneObjectLoader:
         obj_info["data"] = data
 
     @staticmethod
-    def load_route_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def load_route_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """
         Load route info data with full version-specific handling
         Based on OIRouteInfo.Load in C# (lines 65-91)
@@ -777,7 +777,7 @@ class KoikatuSceneObjectLoader:
         obj_info["data"] = data
 
     @staticmethod
-    def load_camera_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def load_camera_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """
         Load camera info data
         Based on OICameraInfo.Load in C#
@@ -793,7 +793,7 @@ class KoikatuSceneObjectLoader:
         obj_info["data"] = data
 
     @staticmethod
-    def load_text_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def load_text_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """
         Load text info data
         Based on OITextInfo.Load in C#
@@ -843,7 +843,7 @@ class KoikatuSceneObjectLoader:
     """
 
     @staticmethod
-    def save_char_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def save_char_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Save character info data"""
         # Based on OICharInfo.Save in C#
         data = obj_info["data"]
@@ -1004,7 +1004,7 @@ class KoikatuSceneObjectLoader:
             data_stream.write(struct.pack("i", value))
 
     @staticmethod
-    def save_item_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def save_item_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Save item info data"""
         # Based on OIItemInfo.Save in C#
         data = obj_info["data"]
@@ -1081,7 +1081,7 @@ class KoikatuSceneObjectLoader:
             KoikatuSceneObjectLoader.save_child_objects(data_stream, child, version)
 
     @staticmethod
-    def save_light_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def save_light_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Save light info data"""
         # Based on OILightInfo.Save in C#
         data = obj_info["data"]
@@ -1106,7 +1106,7 @@ class KoikatuSceneObjectLoader:
         data_stream.write(struct.pack("b", int(data["drawTarget"])))
 
     @staticmethod
-    def save_folder_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def save_folder_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Save folder info data"""
         # Based on OIFolderInfo.Save in C#
         data = obj_info["data"]
@@ -1128,7 +1128,7 @@ class KoikatuSceneObjectLoader:
             KoikatuSceneObjectLoader.save_child_objects(data_stream, child, version)
 
     @staticmethod
-    def save_route_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def save_route_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Save route info data"""
         # Based on OIRouteInfo.Save in C#
         data = obj_info["data"]
@@ -1168,7 +1168,7 @@ class KoikatuSceneObjectLoader:
             KoikatuSceneObjectLoader._save_color_json(data_stream, data["color"])
 
     @staticmethod
-    def save_camera_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def save_camera_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Save camera info data"""
         # Based on OICameraInfo.Save in C#
         data = obj_info["data"]
@@ -1185,7 +1185,7 @@ class KoikatuSceneObjectLoader:
         data_stream.write(struct.pack("b", int(data["active"])))
 
     @staticmethod
-    def save_text_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
+    def save_text_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         """Save text info data"""
         # Based on OITextInfo.Save in C#
         data = obj_info["data"]
@@ -1224,7 +1224,7 @@ class KoikatuSceneObjectLoader:
     """
 
     @staticmethod
-    def load_child_objects(data_stream: BinaryIO, version: str = None) -> list[Dict[str, Any]]:
+    def load_child_objects(data_stream: BinaryIO, version: str | None = None) -> list[Dict[str, Any]]:
         """
         Load child objects recursively
         Based on ObjectInfoAssist.LoadChild in C#
@@ -1249,7 +1249,7 @@ class KoikatuSceneObjectLoader:
         return child_list
 
     @staticmethod
-    def save_child_objects(data_stream: BinaryIO, child_data: Dict[str, Any], version: str = None) -> None:
+    def save_child_objects(data_stream: BinaryIO, child_data: Dict[str, Any], version: str | None = None) -> None:
         """Save child object data (Note: Despite the plural name, this saves one object at a time)"""
         # Based on ObjectInfoAssist.LoadChild - dispatch based on type
         obj_type = child_data.get("type", -1)
@@ -1273,7 +1273,7 @@ class KoikatuSceneObjectLoader:
     """
 
     @staticmethod
-    def _compare_versions(version_str: str, target: str) -> int:
+    def _compare_versions(version_str: str | None, target: str) -> int:
         """
         Compare version strings (e.g., "1.0.3.0" vs "1.0.4.0")
         Returns: -1 if version < target, 0 if equal, 1 if version > target

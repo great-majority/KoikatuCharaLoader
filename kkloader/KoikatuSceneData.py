@@ -1,83 +1,101 @@
+"""Koikatu scene data loader and saver.
+
+This module provides classes for loading and saving Koikatu Studio scene files.
+Scene files are PNG images with binary scene data appended after the PNG IEND chunk.
+"""
+
 import io
 import json
 import struct
-from typing import Union
+from typing import Any, Self
 
 from kkloader.funcs import get_png, load_length, load_string, load_type, msg_pack, msg_unpack, write_string
 from kkloader.KoikatuSceneObjectLoader import KoikatuSceneObjectLoader
 
 
 class KoikatuSceneData:
-    """
-    Class for loading and parsing Koikatu scene data.
+    """Class for loading and parsing Koikatu scene data.
+
     This is a Python implementation of the Studio.SceneInfo.Load function in C#.
+    Supports multiple scene file format versions (0.0.1 through 1.1.2.1+).
+
+    Attributes:
+        image: Optional PNG image data.
+        version: Scene version string.
+        dataVersion: Data format version string.
+        objects: Dictionary of scene objects keyed by object ID.
+        map: Map identifier.
+        caMap: Change amount data for map transform.
+        sunLightType: Sun light type setting.
+        mapOption: Map option flag.
+        And many more scene settings...
     """
 
-    # ============================================================
-    # 1. INITIALIZATION & CLASS METHODS
-    # ============================================================
-    """
-    Core initialization and loading methods.
-
-    - __init__: Initialize scene data with default values for all fields
-    - load: Class method to load scene data from files, bytes, or BytesIO objects
-
-    The load method handles version-aware deserialization, supporting multiple
-    scene file format versions (0.0.1 through 1.1.2.1+).
-    """
-
-    def __init__(self):
-        self.image = None
-        self.version = None
-        self.dataVersion = None
-        self.objects = {}
-        self.map = -1
-        self.caMap = {}
-        self.sunLightType = 0
-        self.mapOption = True
-        self.aceNo = 0
-        self.aceBlend = 0.0
-        self.enableAOE = True
-        self.aoeColor = {"r": 180 / 255, "g": 180 / 255, "b": 180 / 255, "a": 1.0}
-        self.aoeRadius = 0.1
-        self.enableBloom = True
-        self.bloomIntensity = 0.4
-        self.bloomBlur = 0.8
-        self.bloomThreshold = 0.6
-        self.enableDepth = False
-        self.depthFocalSize = 0.95
-        self.depthAperture = 0.6
-        self.enableVignette = True
-        self.enableFog = False
-        self.fogColor = {"r": 137 / 255, "g": 193 / 255, "b": 221 / 255, "a": 1.0}
-        self.fogHeight = 1.0
-        self.fogStartDistance = 0.0
-        self.enableSunShafts = False
-        self.sunThresholdColor = {"r": 128 / 255, "g": 128 / 255, "b": 128 / 255, "a": 1.0}
-        self.sunColor = {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0}
-        self.sunCaster = -1
-        self.enableShadow = True
-        self.faceNormal = False
-        self.faceShadow = False
-        self.lineColorG = 0.0
-        self.ambientShadow = {"r": 128 / 255, "g": 128 / 255, "b": 128 / 255, "a": 1.0}
-        self.lineWidthG = 0.0
-        self.rampG = 0
-        self.ambientShadowG = 0.0
-        self.shaderType = 0
-        self.skyInfo = {"Enable": False, "Pattern": 0}
-        self.cameraSaveData = None
-        self.cameraData = []
-        self.charaLight = {}
-        self.mapLight = {}
-        self.bgmCtrl = {"play": False, "repeat": 0, "no": 0}
-        self.envCtrl = {"play": False, "repeat": 0, "no": 0}
-        self.outsideSoundCtrl = {"play": False, "repeat": 0, "fileName": ""}
-        self.background = ""
-        self.frame = ""
+    def __init__(self) -> None:
+        """Initialize scene data with default values for all fields."""
+        self.image: bytes | None = None
+        self.version: str | None = None
+        self.dataVersion: str | None = None
+        self.objects: dict[int, dict[str, Any]] = {}
+        self.map: int = -1
+        self.caMap: dict[str, Any] = {}
+        self.sunLightType: int = 0
+        self.mapOption: bool = True
+        self.aceNo: int = 0
+        self.aceBlend: float = 0.0
+        self.enableAOE: bool = True
+        self.aoeColor: dict[str, float] = {"r": 180 / 255, "g": 180 / 255, "b": 180 / 255, "a": 1.0}
+        self.aoeRadius: float = 0.1
+        self.enableBloom: bool = True
+        self.bloomIntensity: float = 0.4
+        self.bloomBlur: float = 0.8
+        self.bloomThreshold: float = 0.6
+        self.enableDepth: bool = False
+        self.depthFocalSize: float = 0.95
+        self.depthAperture: float = 0.6
+        self.enableVignette: bool = True
+        self.enableFog: bool = False
+        self.fogColor: dict[str, float] = {"r": 137 / 255, "g": 193 / 255, "b": 221 / 255, "a": 1.0}
+        self.fogHeight: float = 1.0
+        self.fogStartDistance: float = 0.0
+        self.enableSunShafts: bool = False
+        self.sunThresholdColor: dict[str, float] = {"r": 128 / 255, "g": 128 / 255, "b": 128 / 255, "a": 1.0}
+        self.sunColor: dict[str, float] = {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0}
+        self.sunCaster: int = -1
+        self.enableShadow: bool = True
+        self.faceNormal: bool = False
+        self.faceShadow: bool = False
+        self.lineColorG: float = 0.0
+        self.ambientShadow: dict[str, float] = {"r": 128 / 255, "g": 128 / 255, "b": 128 / 255, "a": 1.0}
+        self.lineWidthG: float = 0.0
+        self.rampG: int = 0
+        self.ambientShadowG: float = 0.0
+        self.shaderType: int = 0
+        self.skyInfo: dict[str, Any] = {"Enable": False, "Pattern": 0}
+        self.cameraSaveData: dict[str, Any] | None = None
+        self.cameraData: list[dict[str, Any]] = []
+        self.charaLight: dict[str, Any] = {}
+        self.mapLight: dict[str, Any] = {}
+        self.bgmCtrl: dict[str, Any] = {"play": False, "repeat": 0, "no": 0}
+        self.envCtrl: dict[str, Any] = {"play": False, "repeat": 0, "no": 0}
+        self.outsideSoundCtrl: dict[str, Any] = {"play": False, "repeat": 0, "fileName": ""}
+        self.background: str = ""
+        self.frame: str = ""
+        self.tail: str = ""
+        # Deprecated v0.0.1 fields
+        self.deprecated_v001_bool: bool = False
+        self.deprecated_v001_float: float = 0.0
+        self.deprecated_v001_string: str = ""
+        self.deprecated_v001_bool2: bool = False
+        self.deprecated_v001_float2: float = 0.0
+        # Mod-related fields
+        self.mod_header: str = ""
+        self.mod_unknown: int = 0
+        self.mod_data: Any = None
+        self.mod_tail: bytes = b""
 
     @classmethod
-    def load(cls, filelike: Union[str, bytes, io.BytesIO]) -> "KoikatuSceneData":
+    def load(cls, filelike: str | bytes | io.BytesIO) -> Self:
         """
         Load Koikatu scene data from a file or bytes.
 
@@ -272,7 +290,7 @@ class KoikatuSceneData:
     These methods provide the main user-facing interface for working with scenes.
     """
 
-    def save(self, filelike: Union[str, io.BytesIO]) -> None:
+    def save(self, filelike: str | io.BytesIO) -> None:
         """
         Save Koikatu scene data to a file or BytesIO object.
 

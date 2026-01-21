@@ -1,5 +1,8 @@
+"""Summer Vacation save data loader and serializer."""
+
 import io
 import struct
+from typing import Any, BinaryIO, Dict, List, Tuple, Union
 
 from kkloader import SummerVacationCharaData as svcd
 from kkloader.funcs import load_length, msg_pack, msg_unpack
@@ -8,19 +11,32 @@ import pandas as pd
 
 
 class SummerVacationSaveData:
+    """Load and serialize Summer Vacation save data."""
+
     def __init__(self) -> None:
-        pass
+        """Initialize an empty save data container."""
+        self.meta: Dict[str, Any] = {}
+        self.data_length: int = 0
+        self.chara_num: int = 0
+        self.chara_details: List[Dict[str, Any]] = []
+        self.charas: List[Dict[str, Any]] = []
+        self.unknown: int = 0
+        self.player_offset: int = 0
+        self.names: Dict[int, str] = {}
 
     @classmethod
-    def _unsigned_int(cls, data_stream):
+    def _unsigned_int(cls, data_stream: BinaryIO) -> int:
+        """Read an unsigned 32-bit integer."""
         return struct.unpack("<I", data_stream.read(4))[0]
 
     @classmethod
-    def _unsigned_int64(cls, data_stream):
+    def _unsigned_int64(cls, data_stream: BinaryIO) -> int:
+        """Read an unsigned 64-bit integer."""
         return struct.unpack("<Q", data_stream.read(8))[0]
 
     @classmethod
-    def load(cls, filelike):
+    def load(cls, filelike: Union[str, bytes, io.BytesIO]) -> "SummerVacationSaveData":
+        """Load a Summer Vacation save file into a new instance."""
         svs = cls()
 
         if isinstance(filelike, str):
@@ -35,7 +51,7 @@ class SummerVacationSaveData:
             data_stream = filelike
 
         else:
-            ValueError("unsupported input. type:{}".format(type(filelike)))
+            raise ValueError("unsupported input. type:{}".format(type(filelike)))
 
         # Meta information of the save data
         svs.meta = msg_unpack(load_length(data_stream, "<I"))
@@ -67,7 +83,8 @@ class SummerVacationSaveData:
         return svs
 
     # Save Data Serialization
-    def __bytes__(self):
+    def __bytes__(self) -> bytes:
+        """Serialize the save data to bytes."""
         ipack = struct.Struct("<I").pack
         qpack = struct.Struct("<Q").pack
 
@@ -100,7 +117,8 @@ class SummerVacationSaveData:
         return b"".join(data_chunks)
 
     # Create the bytes for the character data section
-    def _bytes_charas(self):
+    def _bytes_charas(self) -> Tuple[bytes, int]:
+        """Serialize character data and return bytes plus player offset."""
         ipack = struct.Struct("<I")
 
         player_offset = 0
@@ -129,12 +147,14 @@ class SummerVacationSaveData:
 
         return b"".join(chara_bytes), player_offset
 
-    def save(self, filename):
+    def save(self, filename: str) -> None:
+        """Write the serialized save data to a file."""
         with open(filename, "wb") as f:
             f.write(bytes(self))
 
     # Create an adjacency matrix representing the interaction data between characters
-    def generate_memory_matrix(self, command=0, active=True, decision="yes"):
+    def generate_memory_matrix(self, command: int = 0, active: bool = True, decision: str = "yes") -> pd.DataFrame:
+        """Generate a memory interaction matrix as a DataFrame."""
         interract = "activeCommand" if active else "passiveCommand"
 
         assert interract in ["activeCommand", "passiveCommand"]
@@ -161,7 +181,8 @@ class SummerVacationSaveData:
         return pd.DataFrame.from_dict(rows).T
 
     # Create an adjacency matrix representing the sexual interaction data between characters
-    def generate_sexual_memory_matrix(self, command):
+    def generate_sexual_memory_matrix(self, command: int) -> pd.DataFrame:
+        """Generate a sexual interaction matrix as a DataFrame."""
         rows = {}
         for c in self.chara_details:
             from_index = c["charasGameParam"]["Index"]

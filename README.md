@@ -205,6 +205,28 @@ for key, obj in scene.objects.items():
 scene.save("./data/kk_scene_modified.png")
 ```
 
+### Iterate All Objects in Scene (Including Nested Children)
+The `walk()` method recursively traverses all objects including nested children (e.g., items attached to characters, objects inside folders).
+
+```python
+from kkloader import KoikatuSceneData
+
+scene = KoikatuSceneData.load("./data/kk_scene.png")
+
+# Simple iteration over all objects
+for key, obj in scene.walk():
+    obj_type = obj["type"]
+    print(f"Key: {key}, Type: {obj_type}")
+
+# With depth information (useful for visualizing hierarchy)
+for key, obj, depth in scene.walk(include_depth=True):
+    indent = "  " * depth
+    obj_type = obj["type"]
+    print(f"{indent}[depth={depth}] Key: {key}, Type: {obj_type}")
+```
+
+Object types: 0=Character, 1=Item, 2=Light, 3=Folder, 4=Route, 5=Camera, 7=Text
+
 ### Others
 
 Various examples using this module can be found in [this repository](https://github.com/great-majority/kk-snippets), and you can also use it on [this site](https://kk-snippets.streamlit.app/).

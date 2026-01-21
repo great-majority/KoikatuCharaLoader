@@ -1,15 +1,42 @@
+"""Utility functions for binary I/O, MessagePack serialization, and PNG handling.
+
+This module provides low-level functions for reading and writing binary data,
+MessagePack serialization with special handling for KKEx data, and PNG image extraction.
+"""
+
+import io
 import struct
+from typing import Any
 
 from msgpack import packb, unpackb
 from msgpack.fallback import Packer as PurePacker
 
 
-def load_length(data_stream, struct_type):
+def load_length(data_stream: io.BytesIO, struct_type: str) -> bytes:
+    """Read length-prefixed data from a binary stream.
+
+    Args:
+        data_stream: Binary stream to read from.
+        struct_type: Struct format character for the length field (e.g., 'i', 'b', 'q').
+
+    Returns:
+        The data bytes read after the length prefix.
+    """
     length = struct.unpack(struct_type, data_stream.read(struct.calcsize(struct_type)))[0]
     return data_stream.read(length)
 
 
-def load_string(data_stream):
+def load_string(data_stream: io.BytesIO) -> bytes:
+    """Read a variable-length encoded string from a binary stream.
+
+    Uses 7-bit variable-length encoding where the MSB indicates continuation.
+
+    Args:
+        data_stream: Binary stream to read from.
+
+    Returns:
+        The string data as bytes.
+    """
     length = 0
     i = 0
     while True:
@@ -22,13 +49,30 @@ def load_string(data_stream):
     return data
 
 
-def load_type(data_stream, struct_type):
+def load_type(data_stream: io.BytesIO, struct_type: str) -> Any:
+    """Read a single value of a specific type from a binary stream.
+
+    Args:
+        data_stream: Binary stream to read from.
+        struct_type: Struct format character for the data type (e.g., 'i', 'f', 'b').
+
+    Returns:
+        The unpacked value.
+    """
     return struct.unpack(struct_type, data_stream.read(struct.calcsize(struct_type)))[0]
 
 
-def write_string(data_stream, value: bytes):
+def write_string(data_stream: io.BytesIO, value: bytes) -> None:
+    """Write a variable-length encoded string to a binary stream.
+
+    Uses 7-bit variable-length encoding where the MSB indicates continuation.
+
+    Args:
+        data_stream: Binary stream to write to.
+        value: The string data as bytes to write.
+    """
     length = len(value)
-    parts = []
+    parts: list[int] = []
     while True:
         byte = length & 0x7F
         length >>= 7
@@ -41,17 +85,43 @@ def write_string(data_stream, value: bytes):
     data_stream.write(value)
 
 
-def msg_unpack(data):
+def msg_unpack(data: bytes | None) -> Any:
+    """Deserialize MessagePack data.
+
+    Args:
+        data: MessagePack-encoded bytes, or None.
+
+    Returns:
+        The deserialized Python object.
+    """
     return unpackb(data, raw=False, strict_map_key=False)
 
 
-def msg_pack(data):
+def msg_pack(data: Any) -> tuple[bytes, int]:
+    """Serialize data to MessagePack format.
+
+    Args:
+        data: Python object to serialize.
+
+    Returns:
+        A tuple of (serialized_bytes, length).
+    """
     serialized = packb(data, use_single_float=True, use_bin_type=True)
     return serialized, len(serialized)
 
 
 class KKExPacker(PurePacker):
-    KEYS_TO_OVERRIDE = {
+    """Custom MessagePack packer for KKEx data.
+
+    This packer overrides specific keys to use int32 format (0xd2) instead of
+    the default compact integer format. This is required for compatibility
+    with the game's MessagePack deserializer.
+
+    Attributes:
+        KEYS_TO_OVERRIDE: Set of keys that require int32 format override.
+    """
+
+    KEYS_TO_OVERRIDE: set[int | str] = {
         0,
         1,
         2,
@@ -73,7 +143,14 @@ class KKExPacker(PurePacker):
         "clothingOffsetVersion",
     }
 
-    def _pack_map_pairs(self, n, pairs, nest_limit):
+    def _pack_map_pairs(self, n: int, pairs: Any, nest_limit: int) -> None:
+        """Pack map key-value pairs with special handling for override keys.
+
+        Args:
+            n: Number of pairs.
+            pairs: Iterable of (key, value) tuples.
+            nest_limit: Recursion depth limit.
+        """
         self._pack_map_header(n)
         for k, v in pairs:
             if k in self.KEYS_TO_OVERRIDE and isinstance(k, int):
@@ -87,13 +164,33 @@ class KKExPacker(PurePacker):
                 self._pack(v, nest_limit - 1)
 
 
-def msg_pack_kkex(data):
+def msg_pack_kkex(data: Any) -> tuple[bytes, int]:
+    """Serialize data to MessagePack format using KKEx-specific packer.
+
+    Args:
+        data: Python object to serialize.
+
+    Returns:
+        A tuple of (serialized_bytes, length).
+    """
     packer = KKExPacker(use_single_float=True, use_bin_type=True)
     serialized = packer.pack(data)
     return serialized, len(serialized)
 
 
-def get_png_length(png_data, orig=0):
+def get_png_length(png_data: bytes, orig: int = 0) -> int:
+    """Calculate the length of a PNG image in a byte buffer.
+
+    Args:
+        png_data: Byte buffer containing PNG data.
+        orig: Starting offset in the buffer.
+
+    Returns:
+        The length of the PNG image from the start offset.
+
+    Raises:
+        AssertionError: If the data does not start with a valid PNG signature.
+    """
     idx = orig
     assert png_data[idx : idx + 8] == b"\x89\x50\x4e\x47\x0d\x0a\x1a\x0a"
 
@@ -107,7 +204,20 @@ def get_png_length(png_data, orig=0):
     return idx - orig
 
 
-def get_png(data_stream):
+def get_png(data_stream: io.BytesIO) -> bytes:
+    """Extract a PNG image from a binary stream.
+
+    Reads from the current position until the IEND chunk is found.
+
+    Args:
+        data_stream: Binary stream positioned at the start of PNG data.
+
+    Returns:
+        The complete PNG image as bytes.
+
+    Raises:
+        AssertionError: If the stream does not contain a valid PNG signature.
+    """
     origin_pos = data_stream.tell()
     assert data_stream.read(8) == b"\x89\x50\x4e\x47\x0d\x0a\x1a\x0a"
     while True:

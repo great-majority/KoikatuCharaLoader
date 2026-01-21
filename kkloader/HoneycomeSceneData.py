@@ -1,33 +1,46 @@
+"""Honeycome scene data loader and saver."""
+
 import io
 import struct
-from typing import Union
+from typing import Any, Self
 
 from kkloader.funcs import get_png, load_string, load_type, write_string
 from kkloader.HoneycomeSceneObjectLoader import HoneycomeSceneObjectLoader
 
 
 class HoneycomeSceneData:
-    """
-    Class for loading and parsing Honeycome scene data (simplified version).
+    """Class for loading and parsing Honeycome scene data.
+
     This implementation focuses on loading objects (items and folders) only.
     Supports both load and save operations.
+
+    Attributes:
+        image: PNG image data.
+        version: Scene version string.
+        dataVersion: Data format version string.
+        user_id: User ID string.
+        data_id: Data ID string.
+        title: Scene title.
+        objects: Dictionary of scene objects keyed by object ID.
+        unknown_tail: Remaining unparsed data (lights, camera, etc.).
     """
 
-    def __init__(self):
-        self.image = None
-        self.version = None
-        self.dataVersion = None
-        self.user_id = None
-        self.data_id = None
-        self.title = None
-        self.unknown_1 = None
-        self.unknown_2 = None
-        self.unknown_3 = None
-        self.objects = {}
-        self.unknown_tail = b""
+    def __init__(self) -> None:
+        """Initialize scene data with default values."""
+        self.image: bytes | None = None
+        self.version: str | None = None
+        self.dataVersion: str | None = None
+        self.user_id: str | None = None
+        self.data_id: str | None = None
+        self.title: str | None = None
+        self.unknown_1: int | None = None
+        self.unknown_2: int | None = None
+        self.unknown_3: bytes | None = None
+        self.objects: dict[int, dict[str, Any]] = {}
+        self.unknown_tail: bytes = b""
 
     @classmethod
-    def load(cls, filelike: Union[str, bytes, io.BytesIO]) -> "HoneycomeSceneData":
+    def load(cls, filelike: str | bytes | io.BytesIO) -> Self:
         """
         Load Honeycome scene data from a file or bytes.
 
@@ -88,7 +101,7 @@ class HoneycomeSceneData:
 
         return hs
 
-    def save(self, filelike: Union[str, io.BytesIO]) -> None:
+    def save(self, filelike: str | io.BytesIO) -> None:
         """
         Save Honeycome scene data to a file or BytesIO object.
 

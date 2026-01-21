@@ -11,20 +11,21 @@ from kkloader.SummerVacationCharaData import SummerVacationCharaData
 class HoneycomeSceneObjectLoader:
     """
     Class for loading Honeycome scene object data.
-    This implementation supports only Item (type=1) and Folder (type=3) objects.
+
+    Supported object types:
+      0: Character (OICharInfo)
+      1: Item (OIItemInfo)
+      2: Light (OILightInfo)
+      3: Folder (OIFolderInfo)
+      4: Route (OIRouteInfo)
+      5: Camera (OICameraInfo)
     """
 
     # ============================================================
     # 1. DISPATCH TABLES & CONFIGURATION
     # ============================================================
-    """
-    Object type dispatching system.
-
-    Maps object type IDs to their respective load/save handler methods.
-    Supported object types:
-      1: Item (OIItemInfo)
-      3: Folder (OIFolderInfo)
-    """
+    # Object type dispatch tables
+    # Maps object type IDs to their respective load/save handler methods.
 
     # Object type dispatch tables
     _LOAD_DISPATCH = {
@@ -108,7 +109,7 @@ class HoneycomeSceneObjectLoader:
     @staticmethod
     def _load_vector3(data_stream: BinaryIO) -> Dict[str, float]:
         """Load a Vector3 (x, y, z) from the data stream"""
-        return {"x": struct.unpack("f", data_stream.read(4))[0], "y": struct.unpack("f", data_stream.read(4))[0], "z": struct.unpack("f", data_stream.read(4))[0]}
+        return {"x": load_type(data_stream, "f"), "y": load_type(data_stream, "f"), "z": load_type(data_stream, "f")}
 
     @staticmethod
     def _save_vector3(data_stream: BinaryIO, vector3: Dict[str, float]) -> None:
@@ -132,7 +133,7 @@ class HoneycomeSceneObjectLoader:
     @staticmethod
     def _load_color_rgba(data_stream: BinaryIO) -> Dict[str, float]:
         """Load a Color (r, g, b, a) from the data stream"""
-        return {"r": struct.unpack("f", data_stream.read(4))[0], "g": struct.unpack("f", data_stream.read(4))[0], "b": struct.unpack("f", data_stream.read(4))[0], "a": struct.unpack("f", data_stream.read(4))[0]}
+        return {"r": load_type(data_stream, "f"), "g": load_type(data_stream, "f"), "b": load_type(data_stream, "f"), "a": load_type(data_stream, "f")}
 
     @staticmethod
     def _save_color_rgba(data_stream: BinaryIO, color: Dict[str, float]) -> None:
@@ -145,7 +146,7 @@ class HoneycomeSceneObjectLoader:
     @staticmethod
     def _load_bool_array(data_stream: BinaryIO, count: int) -> list:
         """Load an array of boolean values from the data stream"""
-        return [bool(struct.unpack("b", data_stream.read(1))[0]) for _ in range(count)]
+        return [bool(load_type(data_stream, "b")) for _ in range(count)]
 
     # ============================================================
     # 3. BASE OBJECT INFO HELPERS
@@ -161,12 +162,12 @@ class HoneycomeSceneObjectLoader:
     def _load_object_info_base(data_stream: BinaryIO) -> Dict[str, Any]:
         """Load ObjectInfo base data (dicKey, position, rotation, scale, treeState, visible)"""
         return {
-            "dicKey": struct.unpack("i", data_stream.read(4))[0],
+            "dicKey": load_type(data_stream, "i"),
             "position": HoneycomeSceneObjectLoader._load_vector3(data_stream),
             "rotation": HoneycomeSceneObjectLoader._load_vector3(data_stream),
             "scale": HoneycomeSceneObjectLoader._load_vector3(data_stream),
-            "treeState": struct.unpack("i", data_stream.read(4))[0],
-            "visible": bool(struct.unpack("b", data_stream.read(1))[0]),
+            "treeState": load_type(data_stream, "i"),
+            "visible": bool(load_type(data_stream, "b")),
         }
 
     @staticmethod
@@ -210,7 +211,7 @@ class HoneycomeSceneObjectLoader:
         bone_data = {}
 
         # Read dicKey (int)
-        bone_data["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
+        bone_data["dicKey"] = load_type(data_stream, "i")
 
         # Read ChangeAmount (ChangeAmount.Load/Save in C#)
         # ChangeAmount contains 3 Vector3: position, rotation, scale
@@ -236,18 +237,18 @@ class HoneycomeSceneObjectLoader:
         pattern_data = {}
 
         # Read unknown float (always 1.0?)
-        pattern_data["unknown_float"] = struct.unpack("f", data_stream.read(4))[0]
+        pattern_data["unknown_float"] = load_type(data_stream, "f")
 
         # Read key
-        pattern_data["key"] = struct.unpack("i", data_stream.read(4))[0]
+        pattern_data["key"] = load_type(data_stream, "i")
 
         if pattern_data["key"] == -1:
             pattern_data["pattern_filepath"] = load_string(data_stream).decode("utf-8")
-            pattern_data["unknown_bool"] = bool(struct.unpack("b", data_stream.read(1))[0])
+            pattern_data["unknown_bool"] = bool(load_type(data_stream, "b"))
 
         else:
-            pattern_data["clamp"] = bool(struct.unpack("b", data_stream.read(1))[0])
-            pattern_data["unknown_bool"] = bool(struct.unpack("b", data_stream.read(1))[0])
+            pattern_data["clamp"] = bool(load_type(data_stream, "b"))
+            pattern_data["unknown_bool"] = bool(load_type(data_stream, "b"))
 
         # Read uv (Vector4)
         uv_json = load_string(data_stream).decode("utf-8")
@@ -287,7 +288,7 @@ class HoneycomeSceneObjectLoader:
         route_point = {}
 
         # Read dicKey
-        route_point["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
+        route_point["dicKey"] = load_type(data_stream, "i")
 
         # Read ChangeAmount (3 Vector3)
         route_point["changeAmount"] = {
@@ -296,11 +297,11 @@ class HoneycomeSceneObjectLoader:
             "scale": HoneycomeSceneObjectLoader._load_vector3(data_stream),
         }
 
-        route_point["speed"] = struct.unpack("f", data_stream.read(4))[0]
-        route_point["easeType"] = struct.unpack("i", data_stream.read(4))[0]
-        route_point["connection"] = struct.unpack("i", data_stream.read(4))[0]
+        route_point["speed"] = load_type(data_stream, "f")
+        route_point["easeType"] = load_type(data_stream, "i")
+        route_point["connection"] = load_type(data_stream, "i")
         route_point["aidInfo"] = HoneycomeSceneObjectLoader._load_route_point_aid_info(data_stream)
-        route_point["link"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        route_point["link"] = bool(load_type(data_stream, "b"))
 
         return route_point
 
@@ -343,7 +344,7 @@ class HoneycomeSceneObjectLoader:
         aid_info = {}
 
         # Read dicKey
-        aid_info["dicKey"] = struct.unpack("i", data_stream.read(4))[0]
+        aid_info["dicKey"] = load_type(data_stream, "i")
 
         # Read ChangeAmount (3 Vector3)
         aid_info["changeAmount"] = {
@@ -353,7 +354,7 @@ class HoneycomeSceneObjectLoader:
         }
 
         # Read isInit
-        aid_info["isInit"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        aid_info["isInit"] = bool(load_type(data_stream, "b"))
 
         return aid_info
 
@@ -378,18 +379,16 @@ class HoneycomeSceneObjectLoader:
     # ============================================================
     # 5. OBJECT TYPE LOADERS
     # ============================================================
-    """
-    Object type-specific load methods.
-
-    Each method handles loading a specific type of scene object:
-    - load_char_info: Characters (OICharInfo)
-    - load_item_info: Scene items (OIItemInfo)
-    - load_light_info: Light sources (OILightInfo)
-    - load_folder_info: Object folders (OIFolderInfo)
-    - load_camera_info: Camera objects (OICameraInfo)
-
-    All methods populate the obj_info dictionary with loaded data.
-    """
+    # Object type-specific load methods.
+    # Each method handles loading a specific type of scene object:
+    # - load_char_info: Characters (OICharInfo)
+    # - load_item_info: Scene items (OIItemInfo)
+    # - load_light_info: Light sources (OILightInfo)
+    # - load_folder_info: Object folders (OIFolderInfo)
+    # - load_route_info: Route objects (OIRouteInfo)
+    # - load_camera_info: Camera objects (OICameraInfo)
+    #
+    # All methods populate the obj_info dictionary with loaded data.
 
     @staticmethod
     def load_char_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
@@ -399,7 +398,7 @@ class HoneycomeSceneObjectLoader:
         data = HoneycomeSceneObjectLoader._load_object_info_base(data_stream)
 
         # Read sex
-        data["sex"] = struct.unpack("i", data_stream.read(4))[0]
+        data["sex"] = load_type(data_stream, "i")
 
         # Load character file data using appropriate CharaData class based on header
         # This corresponds to ChaFileControl.LoadCharaFile in C#
@@ -421,62 +420,62 @@ class HoneycomeSceneObjectLoader:
             raise RuntimeError(f"Failed to load character data: {str(e)}") from e
 
         # Read bones count
-        bones_count = struct.unpack("i", data_stream.read(4))[0]
+        bones_count = load_type(data_stream, "i")
         data["bones"] = {}
 
         # Read bones data
         for _ in range(bones_count):
-            bone_key = struct.unpack("i", data_stream.read(4))[0]
+            bone_key = load_type(data_stream, "i")
             bone_data = HoneycomeSceneObjectLoader.load_bone_info(data_stream)
             data["bones"][bone_key] = bone_data
 
         # Read IK targets count
-        ik_count = struct.unpack("i", data_stream.read(4))[0]
+        ik_count = load_type(data_stream, "i")
         data["ik_targets"] = {}
 
         # Read IK targets data (OIIKTargetInfo extends OIBoneInfo)
         for _ in range(ik_count):
-            ik_key = struct.unpack("i", data_stream.read(4))[0]
+            ik_key = load_type(data_stream, "i")
             ik_data = HoneycomeSceneObjectLoader.load_bone_info(data_stream)
             data["ik_targets"][ik_key] = ik_data
 
         # Read child objects count (Dictionary<int, List<ObjectInfo>>)
-        child_count = struct.unpack("i", data_stream.read(4))[0]
+        child_count = load_type(data_stream, "i")
         data["child"] = {}
 
         # Read child objects data for each key
         for child_idx in range(child_count):
-            child_key = struct.unpack("i", data_stream.read(4))[0]
+            child_key = load_type(data_stream, "i")
             # Load child objects recursively for this key
             data["child"][child_key] = HoneycomeSceneObjectLoader.load_child_objects(data_stream, version)
 
         # Read kinematic mode
-        data["kinematic_mode"] = struct.unpack("i", data_stream.read(4))[0]
+        data["kinematic_mode"] = load_type(data_stream, "i")
 
         # Read anime info
-        data["anime_info"] = {"group": struct.unpack("i", data_stream.read(4))[0], "category": struct.unpack("i", data_stream.read(4))[0], "no": struct.unpack("i", data_stream.read(4))[0]}
+        data["anime_info"] = {"group": load_type(data_stream, "i"), "category": load_type(data_stream, "i"), "no": load_type(data_stream, "i")}
 
         # Read hand patterns
-        data["hand_patterns"] = [struct.unpack("i", data_stream.read(4))[0], struct.unpack("i", data_stream.read(4))[0]]
+        data["hand_patterns"] = [load_type(data_stream, "i"), load_type(data_stream, "i")]
 
         # Read nipple
-        data["nipple"] = struct.unpack("f", data_stream.read(4))[0]
+        data["nipple"] = load_type(data_stream, "f")
 
         # Read siru
         data["siru"] = data_stream.read(5)
 
         # Read mouth open
-        data["mouth_open"] = struct.unpack("f", data_stream.read(4))[0]
+        data["mouth_open"] = load_type(data_stream, "f")
 
         # Read lip sync
-        data["lip_sync"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        data["lip_sync"] = bool(load_type(data_stream, "b"))
 
         data["unknown_bytes_1"] = data_stream.read(4)
 
         # Read look at target info (LookAtTargetInfo.Load)
         # base.Load with _other=false: only dicKey and changeAmount, no treeState/visible
         data["lookAtTarget"] = {
-            "dicKey": struct.unpack("i", data_stream.read(4))[0],
+            "dicKey": load_type(data_stream, "i"),
             "position": HoneycomeSceneObjectLoader._load_vector3(data_stream),
             "rotation": HoneycomeSceneObjectLoader._load_vector3(data_stream),
             "scale": HoneycomeSceneObjectLoader._load_vector3(data_stream),
@@ -485,13 +484,13 @@ class HoneycomeSceneObjectLoader:
         data["unknown_bytes_2"] = data_stream.read(14)
 
         # Read enable IK
-        data["enable_ik"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        data["enable_ik"] = bool(load_type(data_stream, "b"))
 
         # Read active IK
         data["active_ik"] = HoneycomeSceneObjectLoader._load_bool_array(data_stream, 5)
 
         # Read enable FK
-        data["enable_fk"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        data["enable_fk"] = bool(load_type(data_stream, "b"))
 
         # Read active FK
         data["active_fk"] = HoneycomeSceneObjectLoader._load_bool_array(data_stream, 7)
@@ -501,72 +500,72 @@ class HoneycomeSceneObjectLoader:
         data["expression"] = HoneycomeSceneObjectLoader._load_bool_array(data_stream, expression_count)
 
         # Read anime speed
-        data["anime_speed"] = struct.unpack("f", data_stream.read(4))[0]
+        data["anime_speed"] = load_type(data_stream, "f")
 
         # Read anime pattern
-        data["anime_pattern"] = struct.unpack("f", data_stream.read(4))[0]
+        data["anime_pattern"] = load_type(data_stream, "f")
 
         # Read anime option visible
-        data["anime_option_visible"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        data["anime_option_visible"] = bool(load_type(data_stream, "b"))
 
         # Read is anime force loop
-        data["is_anime_force_loop"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        data["is_anime_force_loop"] = bool(load_type(data_stream, "b"))
 
-        data["unknown_int_1"] = struct.unpack("i", data_stream.read(4))[0]
-        data["unknown_int_2"] = struct.unpack("i", data_stream.read(4))[0]
+        data["unknown_int_1"] = load_type(data_stream, "i")
+        data["unknown_int_2"] = load_type(data_stream, "i")
 
         # Read voice ctrl (VoiceCtrl.Load)
-        voice_list_count = struct.unpack("i", data_stream.read(4))[0]
+        voice_list_count = load_type(data_stream, "i")
         data["voiceCtrl"] = {"list": [], "repeat": None}
         for _ in range(voice_list_count):
-            voice_info = {"group": struct.unpack("i", data_stream.read(4))[0], "category": struct.unpack("i", data_stream.read(4))[0], "no": struct.unpack("i", data_stream.read(4))[0]}
+            voice_info = {"group": load_type(data_stream, "i"), "category": load_type(data_stream, "i"), "no": load_type(data_stream, "i")}
             data["voiceCtrl"]["list"].append(voice_info)
-        data["voiceCtrl"]["repeat"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        data["voiceCtrl"]["repeat"] = bool(load_type(data_stream, "b"))
 
         # Read visible son
-        data["visible_son"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        data["visible_son"] = bool(load_type(data_stream, "b"))
 
         # Read son length
-        data["son_length"] = struct.unpack("f", data_stream.read(4))[0]
+        data["son_length"] = load_type(data_stream, "f")
 
         # Read visible simple
-        data["visible_simple"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        data["visible_simple"] = bool(load_type(data_stream, "b"))
 
         # Read simple color
         simple_color_json = load_length(data_stream, "b").decode("utf-8")
         data["simple_color"] = HoneycomeSceneObjectLoader.parse_color_json(simple_color_json)
 
         # Read anime option param
-        data["anime_option_param"] = [struct.unpack("f", data_stream.read(4))[0], struct.unpack("f", data_stream.read(4))[0]]
+        data["anime_option_param"] = [load_type(data_stream, "f"), load_type(data_stream, "f")]
 
         # Read unknown int
-        data["unknown_int_3"] = struct.unpack("i", data_stream.read(4))[0]
+        data["unknown_int_3"] = load_type(data_stream, "i")
 
         # Read neck byte data
-        neck_data_length = struct.unpack("i", data_stream.read(4))[0]
+        neck_data_length = load_type(data_stream, "i")
         data["neck_byte_data"] = data_stream.read(neck_data_length)
 
         # Read eyes byte data
-        eyes_data_length = struct.unpack("i", data_stream.read(4))[0]
+        eyes_data_length = load_type(data_stream, "i")
         data["eyes_byte_data"] = data_stream.read(eyes_data_length)
 
         # Read anime normalized time
-        data["anime_normalized_time"] = struct.unpack("f", data_stream.read(4))[0]
+        data["anime_normalized_time"] = load_type(data_stream, "f")
 
         # Read dic access group
-        dic_access_group_count = struct.unpack("i", data_stream.read(4))[0]
+        dic_access_group_count = load_type(data_stream, "i")
         data["dic_access_group"] = {}
         for _ in range(dic_access_group_count):
-            key = struct.unpack("i", data_stream.read(4))[0]
-            value = struct.unpack("i", data_stream.read(4))[0]
+            key = load_type(data_stream, "i")
+            value = load_type(data_stream, "i")
             data["dic_access_group"][key] = value
 
         # Read dic access no
-        dic_access_no_count = struct.unpack("i", data_stream.read(4))[0]
+        dic_access_no_count = load_type(data_stream, "i")
         data["dic_access_no"] = {}
         for _ in range(dic_access_no_count):
-            key = struct.unpack("i", data_stream.read(4))[0]
-            value = struct.unpack("i", data_stream.read(4))[0]
+            key = load_type(data_stream, "i")
+            value = load_type(data_stream, "i")
             data["dic_access_no"][key] = value
 
         obj_info["data"] = data
@@ -575,10 +574,10 @@ class HoneycomeSceneObjectLoader:
     def load_item_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
         data = HoneycomeSceneObjectLoader._load_object_info_base(data_stream)
 
-        data["unknown_1"] = struct.unpack("i", data_stream.read(4))[0]
-        data["group"] = struct.unpack("i", data_stream.read(4))[0]
-        data["category"] = struct.unpack("i", data_stream.read(4))[0]
-        data["no"] = struct.unpack("i", data_stream.read(4))[0]
+        data["unknown_1"] = load_type(data_stream, "i")
+        data["group"] = load_type(data_stream, "i")
+        data["category"] = load_type(data_stream, "i")
+        data["no"] = load_type(data_stream, "i")
         data["unknown_3"] = data_stream.read(8)
 
         data["colors"] = []
@@ -589,39 +588,39 @@ class HoneycomeSceneObjectLoader:
             else:
                 data["colors"].append(None)
 
-        data["unknown_4"] = struct.unpack("i", data_stream.read(4))[0]
-        data["unknown_5"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        data["unknown_4"] = load_type(data_stream, "i")
+        data["unknown_5"] = bool(load_type(data_stream, "b"))
 
         data["patterns"] = []
         for _ in range(3):
             data["patterns"].append(HoneycomeSceneObjectLoader.load_pattern_info(data_stream))
 
         data["unknown_6"] = data_stream.read(4)
-        data["alpha"] = struct.unpack("f", data_stream.read(4))[0]
+        data["alpha"] = load_type(data_stream, "f")
 
         line_color_json = load_string(data_stream).decode("utf-8")
         data["line_color"] = json.loads(line_color_json)
-        data["line_width"] = struct.unpack("f", data_stream.read(4))[0]
+        data["line_width"] = load_type(data_stream, "f")
 
         emission_color_json = load_string(data_stream).decode("utf-8")
         data["emission_color"] = json.loads(emission_color_json)
-        data["emission_power"] = struct.unpack("f", data_stream.read(4))[0]
-        data["light_cancel"] = struct.unpack("f", data_stream.read(4))[0]
+        data["emission_power"] = load_type(data_stream, "f")
+        data["light_cancel"] = load_type(data_stream, "f")
 
         data["unknown_7"] = data_stream.read(6)
         data["unknown_8"] = load_string(data_stream).decode("utf-8")
         data["unknown_9"] = data_stream.read(4)
 
-        data["enable_fk"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        data["enable_fk"] = bool(load_type(data_stream, "b"))
 
-        bones_count = struct.unpack("i", data_stream.read(4))[0]
+        bones_count = load_type(data_stream, "i")
         data["bones"] = {}
         for _ in range(bones_count):
             bone_key = load_string(data_stream).decode("utf-8")
             data["bones"][bone_key] = HoneycomeSceneObjectLoader.load_bone_info(data_stream)
 
-        data["unknown_10"] = bool(struct.unpack("b", data_stream.read(1))[0])
-        data["anime_normalized_time"] = struct.unpack("f", data_stream.read(4))[0]
+        data["unknown_10"] = bool(load_type(data_stream, "b"))
+        data["anime_normalized_time"] = load_type(data_stream, "f")
         data["child"] = HoneycomeSceneObjectLoader.load_child_objects(data_stream, version)
         obj_info["data"] = data
 
@@ -650,19 +649,19 @@ class HoneycomeSceneObjectLoader:
         data = HoneycomeSceneObjectLoader._load_object_info_base(data_stream)
 
         # Read light-specific data
-        data["no"] = struct.unpack("i", data_stream.read(4))[0]
+        data["no"] = load_type(data_stream, "i")
 
         data["unknown_bytes"] = data_stream.read(2)  # 0x0101
         color_bytes = load_string(data_stream)
         data["color"] = HoneycomeSceneObjectLoader.parse_color_json(color_bytes.decode("utf-8"))
 
         # Read light/shadow settings
-        data["intensity"] = struct.unpack("f", data_stream.read(4))[0]
-        data["range"] = struct.unpack("f", data_stream.read(4))[0]
-        data["outsideSpotAngle"] = struct.unpack("f", data_stream.read(4))[0]
-        data["insideSpotAngle"] = struct.unpack("f", data_stream.read(4))[0]
-        data["shadow"] = bool(struct.unpack("b", data_stream.read(1))[0])
-        data["shadowStrength"] = struct.unpack("f", data_stream.read(4))[0]
+        data["intensity"] = load_type(data_stream, "f")
+        data["range"] = load_type(data_stream, "f")
+        data["outsideSpotAngle"] = load_type(data_stream, "f")
+        data["insideSpotAngle"] = load_type(data_stream, "f")
+        data["shadow"] = bool(load_type(data_stream, "b"))
+        data["shadowStrength"] = load_type(data_stream, "f")
 
         obj_info["data"] = data
 
@@ -683,16 +682,16 @@ class HoneycomeSceneObjectLoader:
         data["child"] = HoneycomeSceneObjectLoader.load_child_objects(data_stream, version)
 
         # Read route points list
-        route_points_count = struct.unpack("i", data_stream.read(4))[0]
+        route_points_count = load_type(data_stream, "i")
         data["route_points"] = []
         for _ in range(route_points_count):
             route_point = HoneycomeSceneObjectLoader._load_route_point_info(data_stream, version)
             data["route_points"].append(route_point)
 
-        data["active"] = bool(struct.unpack("b", data_stream.read(1))[0])
-        data["loop"] = bool(struct.unpack("b", data_stream.read(1))[0])
-        data["visibleLine"] = bool(struct.unpack("b", data_stream.read(1))[0])
-        data["orient"] = struct.unpack("i", data_stream.read(4))[0]
+        data["active"] = bool(load_type(data_stream, "b"))
+        data["loop"] = bool(load_type(data_stream, "b"))
+        data["visibleLine"] = bool(load_type(data_stream, "b"))
+        data["orient"] = load_type(data_stream, "i")
 
         color_json = load_string(data_stream).decode("utf-8")
         data["color"] = json.loads(color_json)
@@ -711,25 +710,23 @@ class HoneycomeSceneObjectLoader:
         # Read camera-specific data
         name_bytes = load_string(data_stream)
         data["name"] = name_bytes.decode("utf-8")
-        data["active"] = bool(struct.unpack("b", data_stream.read(1))[0])
+        data["active"] = bool(load_type(data_stream, "b"))
 
         obj_info["data"] = data
 
     # ============================================================
     # 6. OBJECT TYPE SAVERS
     # ============================================================
-    """
-    Object type-specific save methods.
-
-    Each method handles saving a specific type of scene object:
-    - save_char_info: Characters (OICharInfo)
-    - save_item_info: Scene items (OIItemInfo)
-    - save_light_info: Light sources (OILightInfo)
-    - save_folder_info: Object folders (OIFolderInfo)
-    - save_camera_info: Camera objects (OICameraInfo)
-
-    All methods write data from the obj_info dictionary to binary format.
-    """
+    # Object type-specific save methods.
+    # Each method handles saving a specific type of scene object:
+    # - save_char_info: Characters (OICharInfo)
+    # - save_item_info: Scene items (OIItemInfo)
+    # - save_light_info: Light sources (OILightInfo)
+    # - save_folder_info: Object folders (OIFolderInfo)
+    # - save_route_info: Route objects (OIRouteInfo)
+    # - save_camera_info: Camera objects (OICameraInfo)
+    #
+    # All methods write data from the obj_info dictionary to binary format.
 
     @staticmethod
     def save_char_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str = None) -> None:
@@ -1081,11 +1078,11 @@ class HoneycomeSceneObjectLoader:
         child_list = []
 
         # Read count of child objects
-        count = struct.unpack("i", data_stream.read(4))[0]
+        count = load_type(data_stream, "i")
 
         for obj_idx in range(count):
             # Read object type
-            obj_type = struct.unpack("i", data_stream.read(4))[0]
+            obj_type = load_type(data_stream, "i")
 
             # Create object info based on type
             obj_info = {"type": obj_type, "data": {}}

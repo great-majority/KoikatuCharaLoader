@@ -54,9 +54,10 @@ def test_save_honeycome_scene_roundtrip():
     assert scene_data_1.title == scene_data_2.title, "Title mismatch"
     assert scene_data_1.unknown_1 == scene_data_2.unknown_1, "Unknown 1 mismatch"
     assert scene_data_1.unknown_2 == scene_data_2.unknown_2, "Unknown 2 mismatch"
-    assert scene_data_1.unknown_3 == scene_data_2.unknown_3, "Unknown 3 mismatch"
     assert len(scene_data_1.objects) == len(scene_data_2.objects), "Object count mismatch"
     assert scene_data_1.unknown_tail == scene_data_2.unknown_tail, "Unknown tail mismatch"
+    assert scene_data_1.footer_marker == scene_data_2.footer_marker, "Footer marker mismatch"
+    assert scene_data_1.unknown_tail_extra is None
 
     assert set(scene_data_1.objects.keys()) == set(scene_data_2.objects.keys()), "Object keys mismatch"
 

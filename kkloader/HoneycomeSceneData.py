@@ -34,10 +34,24 @@ class HoneycomeSceneData:
         self.data_id: str | None = None
         self.title: str | None = None
         self.unknown_1: int | None = None
-        self.unknown_2: int | None = None
-        self.unknown_3: bytes | None = None
+        self.unknown_2: bytes | None = None
         self.objects: dict[int, dict[str, Any]] = {}
         self.unknown_tail: bytes = b""
+        self.unknown_tail_1: bytes | None = None
+        self.unknown_tail_2: bytes | None = None
+        self.unknown_tail_3: bytes | None = None
+        self.unknown_tail_4: bytes | None = None
+        self.unknown_tail_5: bytes | None = None
+        self.unknown_tail_6: bytes | None = None
+        self.unknown_tail_7: bytes | None = None
+        self.unknown_tail_8: bytes | None = None
+        self.unknown_tail_9: bytes | None = None
+        self.unknown_tail_10: bytes | None = None
+        self.unknown_tail_11: int | None = None
+        self.unknown_tail_12: bytes | None = None
+        self.unknown_tail_13: int | None = None
+        self.footer_marker: str | None = None
+        self.unknown_tail_extra: bytes | None = None
 
     @classmethod
     def load(cls, filelike: str | bytes | io.BytesIO) -> Self:
@@ -76,8 +90,7 @@ class HoneycomeSceneData:
 
         # Read unknown fields
         hs.unknown_1 = load_type(data_stream, "i")  # 1
-        hs.unknown_2 = load_type(data_stream, "i")
-        hs.unknown_3 = data_stream.read(hs.unknown_2)
+        hs.unknown_2 = data_stream.read(load_type(data_stream, "i"))
 
         hs.version = version_str
         hs.dataVersion = version_str
@@ -98,6 +111,22 @@ class HoneycomeSceneData:
 
         # Read remaining data as unknown_tail (lights, camera, etc.)
         hs.unknown_tail = data_stream.read()
+        tail_stream = io.BytesIO(hs.unknown_tail)
+        for idx in range(10):
+            length = load_type(tail_stream, "i")
+            block = tail_stream.read(length)
+            setattr(hs, f"unknown_tail_{idx + 1}", block)
+
+        hs.unknown_tail_11 = load_type(tail_stream, "i")
+        hs.unknown_tail_12 = tail_stream.read(16)
+        hs.unknown_tail_13 = load_type(tail_stream, "B")
+
+        # 【DigitalCraft】
+        hs.footer_marker = load_string(tail_stream).decode("utf-8")
+
+        # this byte is basically zero-length, but may contain mod data.
+        remaining = tail_stream.read()
+        hs.unknown_tail_extra = remaining or None
 
         return hs
 
@@ -141,8 +170,9 @@ class HoneycomeSceneData:
 
         # Write unknown fields
         data_stream.write(struct.pack("i", self.unknown_1))
-        data_stream.write(struct.pack("i", self.unknown_2))
-        data_stream.write(self.unknown_3)
+        unknown_2 = self.unknown_2 or b""
+        data_stream.write(struct.pack("i", len(unknown_2)))
+        data_stream.write(unknown_2)
 
         # Write object dictionary
         data_stream.write(struct.pack("i", len(self.objects)))
@@ -157,7 +187,33 @@ class HoneycomeSceneData:
                 raise NotImplementedError(f"Cannot save object of type {obj_info['type']}: {str(e)}")
 
         # Write unknown_tail (lights, camera, etc.)
-        data_stream.write(self.unknown_tail)
+        if self.unknown_tail_1 is None or self.footer_marker is None:
+            data_stream.write(self.unknown_tail)
+        else:
+            for idx in range(10):
+                block = getattr(self, f"unknown_tail_{idx + 1}")
+                if block is None:
+                    block = b""
+                length = len(block)
+                data_stream.write(struct.pack("i", length))
+                data_stream.write(block)
+
+            tail_magic = self.unknown_tail_11 or 0
+            data_stream.write(struct.pack("i", tail_magic))
+
+            tail_guid = self.unknown_tail_12 or b""
+            if len(tail_guid) != 16:
+                tail_guid = tail_guid.ljust(16, b"\x00")[:16]
+            data_stream.write(tail_guid)
+
+            tail_byte = self.unknown_tail_13 or 0
+            data_stream.write(struct.pack("B", tail_byte))
+
+            tail_marker = self.footer_marker or ""
+            write_string(data_stream, tail_marker.encode("utf-8"))
+
+            if self.unknown_tail_extra:
+                data_stream.write(self.unknown_tail_extra)
 
         return data_stream.getvalue()
 

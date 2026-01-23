@@ -110,22 +110,20 @@ class HoneycomeSceneData:
             hs.objects[key] = obj_info
 
         # Read remaining data as unknown_tail (lights, camera, etc.)
-        hs.unknown_tail = data_stream.read()
-        tail_stream = io.BytesIO(hs.unknown_tail)
         for idx in range(10):
-            length = load_type(tail_stream, "i")
-            block = tail_stream.read(length)
+            length = load_type(data_stream, "i")
+            block = data_stream.read(length)
             setattr(hs, f"unknown_tail_{idx + 1}", block)
 
-        hs.unknown_tail_11 = load_type(tail_stream, "i")
-        hs.unknown_tail_12 = tail_stream.read(16)
-        hs.unknown_tail_13 = load_type(tail_stream, "B")
+        hs.unknown_tail_11 = load_type(data_stream, "i")
+        hs.unknown_tail_12 = data_stream.read(16)
+        hs.unknown_tail_13 = load_type(data_stream, "B")
 
         # 【DigitalCraft】
-        hs.footer_marker = load_string(tail_stream).decode("utf-8")
+        hs.footer_marker = load_string(data_stream).decode("utf-8")
 
         # this byte is basically zero-length, but may contain mod data.
-        remaining = tail_stream.read()
+        remaining = data_stream.read()
         hs.unknown_tail_extra = remaining or None
 
         return hs
@@ -187,33 +185,30 @@ class HoneycomeSceneData:
                 raise NotImplementedError(f"Cannot save object of type {obj_info['type']}: {str(e)}")
 
         # Write unknown_tail (lights, camera, etc.)
-        if self.unknown_tail_1 is None or self.footer_marker is None:
-            data_stream.write(self.unknown_tail)
-        else:
-            for idx in range(10):
-                block = getattr(self, f"unknown_tail_{idx + 1}")
-                if block is None:
-                    block = b""
-                length = len(block)
-                data_stream.write(struct.pack("i", length))
-                data_stream.write(block)
+        for idx in range(10):
+            block = getattr(self, f"unknown_tail_{idx + 1}")
+            if block is None:
+                block = b""
+            length = len(block)
+            data_stream.write(struct.pack("i", length))
+            data_stream.write(block)
 
-            tail_magic = self.unknown_tail_11 or 0
-            data_stream.write(struct.pack("i", tail_magic))
+        tail_magic = self.unknown_tail_11 or 0
+        data_stream.write(struct.pack("i", tail_magic))
 
-            tail_guid = self.unknown_tail_12 or b""
-            if len(tail_guid) != 16:
-                tail_guid = tail_guid.ljust(16, b"\x00")[:16]
-            data_stream.write(tail_guid)
+        tail_guid = self.unknown_tail_12 or b""
+        if len(tail_guid) != 16:
+            tail_guid = tail_guid.ljust(16, b"\x00")[:16]
+        data_stream.write(tail_guid)
 
-            tail_byte = self.unknown_tail_13 or 0
-            data_stream.write(struct.pack("B", tail_byte))
+        tail_byte = self.unknown_tail_13 or 0
+        data_stream.write(struct.pack("B", tail_byte))
 
-            tail_marker = self.footer_marker or ""
-            write_string(data_stream, tail_marker.encode("utf-8"))
+        tail_marker = self.footer_marker or ""
+        write_string(data_stream, tail_marker.encode("utf-8"))
 
-            if self.unknown_tail_extra:
-                data_stream.write(self.unknown_tail_extra)
+        if self.unknown_tail_extra:
+            data_stream.write(self.unknown_tail_extra)
 
         return data_stream.getvalue()
 

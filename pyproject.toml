@@ -11,6 +11,7 @@ python = "^3.11"
 msgpack = "^1.0.3"
 pandas = "^2.2.2"
 lz4 = "^4.4.4"
+cryptography = "^46.0.3"
 
 
 [tool.poetry.group.dev.dependencies]

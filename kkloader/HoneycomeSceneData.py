@@ -7,6 +7,9 @@ from typing import Any, Self
 from kkloader.funcs import get_png, load_string, load_type, write_string
 from kkloader.HoneycomeSceneObjectLoader import HoneycomeSceneObjectLoader
 
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
 
 class HoneycomeSceneData:
     """Class for loading and parsing Honeycome scene data.
@@ -52,19 +55,25 @@ class HoneycomeSceneData:
         self.unknown_tail_13: int | None = None
         self.footer_marker: str | None = None
         self.unknown_tail_extra: bytes | None = None
+        self.crypto_key: bytes | None = None
+        self.crypto_iv: bytes | None = None
 
     @classmethod
-    def load(cls, filelike: str | bytes | io.BytesIO) -> Self:
+    def load(cls, filelike: str | bytes | io.BytesIO, decryption_key: bytes | None = None, decryption_iv: bytes | None = None) -> Self:
         """
         Load Honeycome scene data from a file or bytes.
 
         Args:
             filelike: Path to the file, bytes, or BytesIO object containing the scene data
+            decryption_key: AES key for decrypting unknown_tail blocks
+            decryption_iv: AES IV for decrypting unknown_tail blocks
 
         Returns:
             HoneycomeSceneData: The loaded scene data
         """
         hs = cls()
+        hs.crypto_key = None
+        hs.crypto_iv = None
 
         if isinstance(filelike, str):
             with open(filelike, "br") as f:
@@ -126,6 +135,18 @@ class HoneycomeSceneData:
         remaining = data_stream.read()
         hs.unknown_tail_extra = remaining or None
 
+        hs.crypto_key = decryption_key
+        hs.crypto_iv = decryption_iv
+        if decryption_key and decryption_iv:
+            if len(decryption_key) != 16 or len(decryption_iv) != 16:
+                raise ValueError("Invalid decryption key or initialization vector.")
+
+            hs.unknown_2 = hs._decrypt_unknown(hs.unknown_2, decryption_key, decryption_iv)
+            for idx in range(10):
+                block = getattr(hs, f"unknown_tail_{idx + 1}") or b""
+                decrypted = hs._decrypt_unknown(block, decryption_key, decryption_iv)
+                setattr(hs, f"unknown_tail_{idx + 1}", decrypted)
+
         return hs
 
     def save(self, filelike: str | io.BytesIO) -> None:
@@ -168,7 +189,9 @@ class HoneycomeSceneData:
 
         # Write unknown fields
         data_stream.write(struct.pack("i", self.unknown_1))
-        unknown_2 = self.unknown_2 or b""
+        unknown_2 = self.unknown_2
+        if self.crypto_key is not None and self.crypto_iv is not None:
+            unknown_2 = self._encrypt_unknown(unknown_2)
         data_stream.write(struct.pack("i", len(unknown_2)))
         data_stream.write(unknown_2)
 
@@ -186,31 +209,30 @@ class HoneycomeSceneData:
 
         # Write unknown_tail (lights, camera, etc.)
         for idx in range(10):
-            block = getattr(self, f"unknown_tail_{idx + 1}")
-            if block is None:
-                block = b""
+            block = getattr(self, f"unknown_tail_{idx + 1}") or b""
+            if self.crypto_key is not None and self.crypto_iv is not None:
+                block = self._encrypt_unknown(block)
             length = len(block)
             data_stream.write(struct.pack("i", length))
             data_stream.write(block)
 
-        tail_magic = self.unknown_tail_11 or 0
-        data_stream.write(struct.pack("i", tail_magic))
-
-        tail_guid = self.unknown_tail_12 or b""
-        if len(tail_guid) != 16:
-            tail_guid = tail_guid.ljust(16, b"\x00")[:16]
-        data_stream.write(tail_guid)
-
-        tail_byte = self.unknown_tail_13 or 0
-        data_stream.write(struct.pack("B", tail_byte))
-
-        tail_marker = self.footer_marker or ""
-        write_string(data_stream, tail_marker.encode("utf-8"))
+        data_stream.write(struct.pack("i", self.unknown_tail_11))
+        data_stream.write(self.unknown_tail_12)
+        data_stream.write(struct.pack("B", self.unknown_tail_13))
+        write_string(data_stream, self.footer_marker.encode("utf-8"))
 
         if self.unknown_tail_extra:
             data_stream.write(self.unknown_tail_extra)
 
         return data_stream.getvalue()
+
+    def _decrypt_unknown(self, data: bytes, decryption_key: bytes, decryption_iv: bytes) -> bytes:
+        decryptor = Cipher(algorithms.AES(decryption_key), modes.CBC(decryption_iv), backend=default_backend()).decryptor()
+        return decryptor.update(data) + decryptor.finalize()
+
+    def _encrypt_unknown(self, data: bytes) -> bytes:
+        encryptor = Cipher(algorithms.AES(self.crypto_key), modes.CBC(self.crypto_iv), backend=default_backend()).encryptor()
+        return encryptor.update(data) + encryptor.finalize()
 
     def walk(self, include_depth: bool = False):
         """

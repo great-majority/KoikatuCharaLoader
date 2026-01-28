@@ -2,6 +2,8 @@
 
 import io
 import struct
+import sys
+from contextlib import contextmanager
 from typing import Any, Self
 
 from kkloader.funcs import get_png, load_string, load_type, write_string
@@ -50,16 +52,32 @@ class HoneycomeSceneData:
         self.unknown_tail_8: bytes | None = None
         self.unknown_tail_9: bytes | None = None
         self.unknown_tail_10: bytes | None = None
-        self.unknown_tail_11: int | None = None
-        self.unknown_tail_12: bytes | None = None
-        self.unknown_tail_13: int | None = None
+        self.frame_filename: str | None = None
+        self.unknown_tail_11: bytes | None = None
         self.footer_marker: str | None = None
         self.unknown_tail_extra: bytes | None = None
         self.crypto_key: bytes | None = None
         self.crypto_iv: bytes | None = None
 
+    @staticmethod
+    @contextmanager
+    def _temp_recursionlimit(limit: int):
+        # Context manager to raise recursion limit temporarily, then restore it.
+        old = sys.getrecursionlimit()
+        sys.setrecursionlimit(limit)
+        try:
+            yield
+        finally:
+            sys.setrecursionlimit(old)
+
     @classmethod
-    def load(cls, filelike: str | bytes | io.BytesIO, decryption_key: bytes | None = None, decryption_iv: bytes | None = None) -> Self:
+    def load(
+        cls,
+        filelike: str | bytes | io.BytesIO,
+        decryption_key: bytes | None = None,
+        decryption_iv: bytes | None = None,
+        recursion_limit: int = 5000,
+    ) -> Self:
         """
         Load Honeycome scene data from a file or bytes.
 
@@ -115,10 +133,13 @@ class HoneycomeSceneData:
 
             # Load object data based on type (only item and folder)
             try:
-                HoneycomeSceneObjectLoader._dispatch_load(data_stream, obj_type, obj_info, version_str)
+                # Temporarily raise the recursion limit while loading nested objects.
+                # Some scenes exceed the default depth and should not crash the whole load.
+                with cls._temp_recursionlimit(recursion_limit):
+                    HoneycomeSceneObjectLoader._dispatch_load(data_stream, obj_type, obj_info, version_str)
             except RecursionError as e:
                 raise RuntimeError(
-                    "This scene is too deeply nested, so please increase `sys.setrecursionlimit()`. "
+                    "This scene is too deeply nested, so please increase `recursion_limit`. "
                     f"(object key={key} type={obj_type})"
                 ) from e
 
@@ -130,9 +151,10 @@ class HoneycomeSceneData:
             block = data_stream.read(length)
             setattr(hs, f"unknown_tail_{idx + 1}", block)
 
-        hs.unknown_tail_11 = load_type(data_stream, "i")
-        hs.unknown_tail_12 = data_stream.read(16)
-        hs.unknown_tail_13 = load_type(data_stream, "B")
+        # Read filename of frame
+        hs.frame_filename = load_string(data_stream).decode("utf-8")
+
+        hs.unknown_tail_11 = data_stream.read(load_type(data_stream, "i"))
 
         # 【DigitalCraft】
         hs.footer_marker = load_string(data_stream).decode("utf-8")
@@ -148,7 +170,7 @@ class HoneycomeSceneData:
                 raise ValueError("Invalid decryption key or initialization vector.")
 
             hs.unknown_2 = hs._decrypt_unknown(hs.unknown_2, decryption_key, decryption_iv)
-            for idx in range(10):
+            for idx in range(11):
                 block = getattr(hs, f"unknown_tail_{idx + 1}") or b""
                 decrypted = hs._decrypt_unknown(block, decryption_key, decryption_iv)
                 setattr(hs, f"unknown_tail_{idx + 1}", decrypted)
@@ -222,9 +244,12 @@ class HoneycomeSceneData:
             data_stream.write(struct.pack("i", length))
             data_stream.write(block)
 
-        data_stream.write(struct.pack("i", self.unknown_tail_11))
-        data_stream.write(self.unknown_tail_12)
-        data_stream.write(struct.pack("B", self.unknown_tail_13))
+        write_string(data_stream, (self.frame_filename or "").encode("utf-8"))
+        unknown_tail_11 = self.unknown_tail_11
+        if self.crypto_key is not None and self.crypto_iv is not None:
+            unknown_tail_11 = self._encrypt_unknown(unknown_tail_11)
+        data_stream.write(struct.pack("i", len(unknown_tail_11)))
+        data_stream.write(unknown_tail_11)
         write_string(data_stream, self.footer_marker.encode("utf-8"))
 
         if self.unknown_tail_extra:

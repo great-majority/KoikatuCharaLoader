@@ -114,7 +114,13 @@ class HoneycomeSceneData:
             obj_info = {"type": obj_type, "data": {}}
 
             # Load object data based on type (only item and folder)
-            HoneycomeSceneObjectLoader._dispatch_load(data_stream, obj_type, obj_info, version_str)
+            try:
+                HoneycomeSceneObjectLoader._dispatch_load(data_stream, obj_type, obj_info, version_str)
+            except RecursionError as e:
+                raise RuntimeError(
+                    "This scene is too deeply nested, so please increase `sys.setrecursionlimit()`. "
+                    f"(object key={key} type={obj_type})"
+                ) from e
 
             hs.objects[key] = obj_info
 

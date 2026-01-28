@@ -52,6 +52,7 @@ class HoneycomeSceneObjectLoader:
         b"\xe3\x80\x90HCChara\xe3\x80\x91": HoneycomeCharaData,  # 【HCChara】 - Honeycome
         b"\xe3\x80\x90SVChara\xe3\x80\x91": SummerVacationCharaData,  # 【SVChara】 - SummerVacationScramble
         b"\xe3\x80\x90ACChara\xe3\x80\x91": AicomiCharaData,  # 【ACChara】 - Aicomi
+        b"\xe3\x80\x90DCChara\xe3\x80\x91": HoneycomeCharaData,  # 【DCChara】 - Same to Honeycome?
     }
 
     @staticmethod

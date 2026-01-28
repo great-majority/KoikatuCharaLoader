@@ -52,6 +52,7 @@ class HoneycomeSceneObjectLoader:
         b"\xe3\x80\x90HCChara\xe3\x80\x91": HoneycomeCharaData,  # 【HCChara】 - Honeycome
         b"\xe3\x80\x90SVChara\xe3\x80\x91": SummerVacationCharaData,  # 【SVChara】 - SummerVacationScramble
         b"\xe3\x80\x90ACChara\xe3\x80\x91": AicomiCharaData,  # 【ACChara】 - Aicomi
+        b"\xe3\x80\x90DCChara\xe3\x80\x91": HoneycomeCharaData,  # 【DCChara】 - Same to Honeycome?
     }
 
     @staticmethod
@@ -511,16 +512,8 @@ class HoneycomeSceneObjectLoader:
         # Read is anime force loop
         data["is_anime_force_loop"] = bool(load_type(data_stream, "b"))
 
-        data["unknown_int_1"] = load_type(data_stream, "i")
-        data["unknown_int_2"] = load_type(data_stream, "i")
-
-        # Read voice ctrl (VoiceCtrl.Load)
-        voice_list_count = load_type(data_stream, "i")
-        data["voiceCtrl"] = {"list": [], "repeat": None}
-        for _ in range(voice_list_count):
-            voice_info = {"group": load_type(data_stream, "i"), "category": load_type(data_stream, "i"), "no": load_type(data_stream, "i")}
-            data["voiceCtrl"]["list"].append(voice_info)
-        data["voiceCtrl"]["repeat"] = bool(load_type(data_stream, "b"))
+        # Read voice ctrl?
+        data["unknown_bytes_3"] = data_stream.read(load_type(data_stream, "i"))
 
         # Read visible son
         data["visible_son"] = bool(load_type(data_stream, "b"))
@@ -840,19 +833,9 @@ class HoneycomeSceneObjectLoader:
         # Write is anime force loop
         data_stream.write(struct.pack("b", int(data["is_anime_force_loop"])))
 
-        # Write unknown ints
-        data_stream.write(struct.pack("i", data["unknown_int_1"]))
-        data_stream.write(struct.pack("i", data["unknown_int_2"]))
-
-        # Write voice ctrl (VoiceCtrl.Save)
-        voiceCtrl = data["voiceCtrl"]
-        voice_list = voiceCtrl["list"]
-        data_stream.write(struct.pack("i", len(voice_list)))
-        for voice_info in voice_list:
-            data_stream.write(struct.pack("i", voice_info["group"]))
-            data_stream.write(struct.pack("i", voice_info["category"]))
-            data_stream.write(struct.pack("i", voice_info["no"]))
-        data_stream.write(struct.pack("b", int(voiceCtrl["repeat"])))
+        # Write unknown bytes (length-prefixed by data length)
+        data_stream.write(struct.pack("i", len(data["unknown_bytes_3"])))
+        data_stream.write(data["unknown_bytes_3"])
 
         # Write visible son
         data_stream.write(struct.pack("b", int(data["visible_son"])))

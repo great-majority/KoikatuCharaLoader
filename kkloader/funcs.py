@@ -177,6 +177,26 @@ def msg_pack_kkex(data: Any) -> tuple[bytes, int]:
     return serialized, len(serialized)
 
 
+PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+
+
+def has_png_magic(data_stream: BinaryIO) -> bool:
+    """Check if the data stream starts with PNG magic number.
+
+    Reads the first 8 bytes and restores the stream position.
+
+    Args:
+        data_stream: Binary stream to check.
+
+    Returns:
+        True if the stream starts with PNG magic number, False otherwise.
+    """
+    start_pos = data_stream.tell()
+    head = data_stream.read(len(PNG_MAGIC))
+    data_stream.seek(start_pos)
+    return head == PNG_MAGIC
+
+
 def get_png_length(png_data: bytes, orig: int = 0) -> int:
     """Calculate the length of a PNG image in a byte buffer.
 

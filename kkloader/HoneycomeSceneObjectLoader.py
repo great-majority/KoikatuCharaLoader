@@ -1,9 +1,9 @@
 import json
 import struct
-from typing import Any, BinaryIO, Dict
+from typing import Any, BinaryIO, Dict, Tuple, Type
 
 from kkloader.AicomiCharaData import AicomiCharaData
-from kkloader.funcs import load_length, load_string, load_type, write_string
+from kkloader.funcs import get_png, has_png_magic, load_length, load_string, load_type, write_string
 from kkloader.HoneycomeCharaData import HoneycomeCharaData
 from kkloader.SummerVacationCharaData import SummerVacationCharaData
 
@@ -56,12 +56,17 @@ class HoneycomeSceneObjectLoader:
     }
 
     @staticmethod
-    def _get_chara_data_class(data_stream: BinaryIO):
+    def _get_chara_data_class(data_stream: BinaryIO) -> Tuple[Type, bool]:
         """
         Read the header from the data stream to determine the appropriate CharaData class.
-        Returns the class and restores the stream position.
+        Returns (chara_class, has_png) and restores the stream position.
         """
         start_pos = data_stream.tell()
+
+        has_png = has_png_magic(data_stream)
+        if has_png:
+            # Skip PNG data using get_png
+            get_png(data_stream)
 
         # Read header (same as KoikatuCharaData._load_header, but only what we need)
         # product_no (int) + header string (length-prefixed with byte length)
@@ -76,7 +81,7 @@ class HoneycomeSceneObjectLoader:
         if chara_class is None:
             raise ValueError(f"Unknown character header: {header}")
 
-        return chara_class
+        return chara_class, has_png
 
     @staticmethod
     def _dispatch_load(data_stream: BinaryIO, obj_type: int, obj_info: Dict[str, Any], version: str | None = None) -> None:
@@ -403,11 +408,10 @@ class HoneycomeSceneObjectLoader:
 
         # Load character file data using appropriate CharaData class based on header
         # This corresponds to ChaFileControl.LoadCharaFile in C#
-        # C# calls with noLoadPng: true, so contains_png=False
         try:
             # Determine the appropriate CharaData class based on header
-            chara_class = HoneycomeSceneObjectLoader._get_chara_data_class(data_stream)
-            chara_data = chara_class.load(data_stream, contains_png=False)
+            chara_class, has_png = HoneycomeSceneObjectLoader._get_chara_data_class(data_stream)
+            chara_data = chara_class.load(data_stream, contains_png=has_png)
             data["character"] = chara_data
         except Exception as e:
             stream_pos_error = data_stream.tell()

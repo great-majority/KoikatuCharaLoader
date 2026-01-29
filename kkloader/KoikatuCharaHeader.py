@@ -1,9 +1,9 @@
 """Koikatu character header loader."""
 
 import io
-from typing import Optional, Union
+from typing import Union
 
-from kkloader.funcs import get_png, load_length, load_type
+from kkloader.funcs import get_png, has_png_magic, load_length, load_type
 
 
 class KoikatuCharaHeader:
@@ -11,19 +11,18 @@ class KoikatuCharaHeader:
 
     def __init__(self) -> None:
         """Initialize empty header fields."""
-        self.image: Optional[bytes] = None
+        self.image: bytes | None = None
         self.product_no: int | None = None
         self.header: bytes | None = None
         self.version: bytes | None = None
         self.face_image: bytes | None = None
 
     @classmethod
-    def load(cls, filelike: Union[str, bytes, io.BytesIO], contains_png: bool = True) -> "KoikatuCharaHeader":
+    def load(cls, filelike: Union[str, bytes, io.BytesIO]) -> "KoikatuCharaHeader":
         """Load the header portion from a Koikatu character file.
 
         Args:
             filelike: Path, bytes, or a BytesIO stream containing the data.
-            contains_png: Whether the file starts with PNG image data.
         """
         kch = cls()
 
@@ -41,8 +40,7 @@ class KoikatuCharaHeader:
         else:
             raise ValueError("unsupported input. type:{}".format(type(filelike)))
 
-        kch.image: Optional[bytes] = None
-        if contains_png:
+        if has_png_magic(data_stream):
             kch.image = get_png(data_stream)
 
         kch.product_no = load_type(data_stream, "i")  # 100

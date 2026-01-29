@@ -157,3 +157,6 @@ cython_debug/
 
 .claude/
 .csfile/
+
+# Ignore new notebooks (already tracked ones remain tracked)
+notebooks/*.ipynb

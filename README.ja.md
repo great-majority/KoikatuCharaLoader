@@ -1,9 +1,10 @@
 # KoikatuCharaLoader
-このプログラムは、コイカツ・エモクリ・ハニカム・サマすく・アイコミのキャラカードをPythonで読み込む・書き込むためのライブラリです。(キャラカードの他にもセーブデータ等も完全ではないですが読み込めます)
+このプログラムは、コイカツ・エモクリ・ハニカム・サマすく・アイコミのキャラカード・シーンデータをPythonで読み込む・書き込むためのライブラリです。
 
 [![](https://img.shields.io/pypi/v/kkloader)](https://pypi.org/project/kkloader/)
 [![Downloads](https://static.pepy.tech/badge/kkloader)](https://pepy.tech/project/kkloader)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/great-majority/KoikatuCharaLoader/blob/master/notebooks/sandbox.ja.ipynb)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/great-majority/KoikatuCharaLoader)
 
 # インストール
 [PyPI](https://pypi.org/project/kkloader/)からインストールできます。
@@ -104,7 +105,7 @@ CLI上では `prettify` メソッドを使えば、ブロックデータに含�
     ...
 ```
 
-### KKEx内にある入れ子的なMessagePackについて
+### KKEx内にあるMessagePackデータについて
 
 `KKEx` には、さらに内部でMessagePackでエンコードされた `bytes` 型のデータが含まれていることがあります。  
 このプログラムは、`KKEx.NESTED_KEYS` に挙げられているプラグインについて追加でこのMessagePackのデータをシリアライズ/デシリアライズします。
@@ -119,7 +120,7 @@ k.save_json("data.json")
 ```
 
 `data.json`
-```data.json
+```json
 {
   "product_no": 100,
   "header": "\u3010KoiKatuChara\u3011",
@@ -163,26 +164,6 @@ k["Custom"]["body"]["shapeValueBody"][0] = 0.5
 k.save("./data/kk_chara_modified.png")  
 ```
 
-### 水泳帽を削除する
-```python
-from kkloader import KoikatuCharaData
-
-k = KoikatuCharaData.load("./data/kk_chara.png")
-for i,c in enumerate(k["Coordinate"]):
-    for n,p in enumerate(c["accessory"]["parts"]):
-        if p["id"] == 5:
-            k["Coordinate"][i]["accessory"]["parts"][n]["type"] = 120
-k.save("./data/kk_chara_modified.png")  
-```
-
-### 陰毛を消す
-```python
-from kkloader import KoikatuCharaData
-kc = KoikatuCharaData.load("./data/kk_chara.png")
-kc["Custom"]["body"]["underhairId"] = 0
-kc.save("./data/kk_chara_modified.png")
-```
-
 ### エモクリのキャラデータをコイカツのキャラデータに変換する
 
 sampleフォルダにある [`ec_to_kk.py`](https://github.com/great-majority/KoikatuCharaLoader/blob/master/samples/ec_to_kk.py) が参考になると思います。
@@ -190,23 +171,6 @@ sampleフォルダにある [`ec_to_kk.py`](https://github.com/great-majority/Ko
 ただこのプログラムが使いたいだけなのであれば、**[このサイト](https://kk-snippets.streamlit.app/ec-to-kk)** から同じ処理をブラウザ上で実行することができます。
 
 ### シーンデータを読み込む
-```python
-from kkloader import KoikatuSceneData
-
-scene = KoikatuSceneData.load("./data/kk_scene.png")
-print(f"Version: {scene.version}")
-print(f"Object count: {len(scene.objects)}")
-
-# シーン内のオブジェクトを列挙
-for key, obj in scene.objects.items():
-    obj_type = obj["type"]  # 0=Character, 1=Item, 2=Light, 3=Folder
-    print(f"  Key: {key}, Type: {obj_type}")
-
-# 変更したシーンを保存
-scene.save("./data/kk_scene_modified.png")
-```
-
-### シーン内の全オブジェクトを再帰的に列挙する
 `walk()`メソッドを使うと、子オブジェクト（キャラクターに装着されたアイテムやフォルダ内のオブジェクトなど）を含む全てのオブジェクトを再帰的に列挙できます。
 
 ```python
@@ -227,6 +191,30 @@ for key, obj, depth in scene.walk(include_depth=True):
 ```
 
 オブジェクトタイプ: 0=Character, 1=Item, 2=Light, 3=Folder, 4=Route, 5=Camera, 7=Text
+
+### シーンデータからキャラクターデータを抽出する
+上記の `walk()` メソッドを使うことで簡単に書けます。
+
+```python
+import copy
+
+from kkloader import KoikatuSceneData
+
+# シーンデータのロード
+scene = KoikatuSceneData.load("./data/kk_scene.png")
+
+# シーンに含まれるオブジェクトをすべてイテレーションする
+for _, obj_info in scene.walk():
+    # Type 0がキャラデータを表している
+    if obj_info["type"] == 0:
+        chara = obj_info["data"]["character"]
+
+        # キャラデータの顔のサムネイル画像をpngデータにする
+        chara.image = copy.deepcopy(chara.face_image)
+
+        # キャラデータの保存
+        chara.save("./data/{}.png".format(name))
+```
 
 ### その他
 

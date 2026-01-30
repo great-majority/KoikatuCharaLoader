@@ -25,6 +25,19 @@ class SummerVacationCharaData(kkloader.KoikatuCharaData):
             "GameInfo_SV": GameInfo_SV,
         }
 
+    def __str__(self) -> str:
+        """Return a string representation of the SummerVacation character.
+
+        Returns:
+            String containing the header and character name.
+        """
+        header = self.header.decode("utf-8")
+        param = self["Parameter"].data
+        lastname = param.get("lastname", "")
+        firstname = param.get("firstname", "")
+        name = "{} {}".format(lastname, firstname).strip()
+        return "{}, {}".format(header, name)
+
 
 class GameParameter_SV(BlockData):
     """Block data for SummerVacationScramble game parameters."""

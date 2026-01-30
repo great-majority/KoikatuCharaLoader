@@ -1,9 +1,10 @@
 # KoikatuCharaLoader
-A simple deserializer and serializer for character data from Koikatu, EmotionCreators, Honeycome, SummerVacationScramble and Aicomi.
+A simple deserializer and serializer for character and scene data from Koikatu, EmotionCreators, Honeycome, SummerVacationScramble and Aicomi.
 
 [![](https://img.shields.io/pypi/v/kkloader)](https://pypi.org/project/kkloader/)
 [![Downloads](https://static.pepy.tech/badge/kkloader)](https://pepy.tech/project/kkloader)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/great-majority/KoikatuCharaLoader/blob/master/notebooks/sandbox.ipynb)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/great-majority/KoikatuCharaLoader)
 
 [日本語マニュアルがここにあります](README.ja.md)
 
@@ -103,7 +104,7 @@ This is useful for identifying which variables exist.
     ...
 ```
 
-### KKEx Nested MessagePack Handling
+### KKEx MessagePack Handling
 
 The `KKEx` in `blockdata` sometimes contains fields encoded as raw `bytes` that are themselves MessagePack payloads.  
 kkloader automatically deserializes and reserializes such fields for known plugins listed in `KKEx.NESTED_KEYS`.
@@ -118,7 +119,7 @@ k.save_json("data.json")
 ```
 
 `data.json`
-```data.json
+```json
 {
   "product_no": 100,
   "header": "\u3010KoiKatuChara\u3011",
@@ -162,26 +163,6 @@ k["Custom"]["body"]["shapeValueBody"][0] = 0.5
 k.save("./data/kk_chara_modified.png")  
 ```
 
-### Remove Swim Cap
-```python
-from kkloader import KoikatuCharaData
-
-k = KoikatuCharaData.load("./data/kk_chara.png")
-for i,c in enumerate(k["Coordinate"]):
-    for n,p in enumerate(c["accessory"]["parts"]):
-        if p["id"] == 5:
-            k["Coordinate"][i]["accessory"]["parts"][n]["type"] = 120
-k.save("./data/kk_chara_modified.png")  
-```
-
-### Remove Under Hair
-```python
-from kkloader import KoikatuCharaData
-kc = KoikatuCharaData.load("./data/kk_chara.png")
-kc["Custom"]["body"]["underhairId"] = 0
-kc.save("./data/kk_chara_modified.png")
-```
-
 ### Convert Character Cards from EmotionCreators to Koikatu
 
 [`ec_to_kk.py`](https://github.com/great-majority/KoikatuCharaLoader/blob/master/samples/ec_to_kk.py) in the sample directory might be helpful.
@@ -189,23 +170,6 @@ kc.save("./data/kk_chara_modified.png")
 Using **[this web app](https://kk-snippets.streamlit.app/ec-to-kk)**, you can easily perform the conversion directly from your browser.
 
 ### Load Scene Data
-```python
-from kkloader import KoikatuSceneData
-
-scene = KoikatuSceneData.load("./data/kk_scene.png")
-print(f"Version: {scene.version}")
-print(f"Object count: {len(scene.objects)}")
-
-# Iterate over objects in the scene
-for key, obj in scene.objects.items():
-    obj_type = obj["type"]  # 0=Character, 1=Item, 2=Light, 3=Folder
-    print(f"  Key: {key}, Type: {obj_type}")
-
-# Save modified scene
-scene.save("./data/kk_scene_modified.png")
-```
-
-### Iterate All Objects in Scene (Including Nested Children)
 The `walk()` method recursively traverses all objects including nested children (e.g., items attached to characters, objects inside folders).
 
 ```python
@@ -226,6 +190,30 @@ for key, obj, depth in scene.walk(include_depth=True):
 ```
 
 Object types: 0=Character, 1=Item, 2=Light, 3=Folder, 4=Route, 5=Camera, 7=Text
+
+### Extract Character Data from Scene
+You can easily extract character data using the `walk()` method above.
+
+```python
+import copy
+
+from kkloader import KoikatuSceneData
+
+# Load scene data
+scene = KoikatuSceneData.load("./data/kk_scene.png")
+
+# Iterate over all objects in the scene
+for _, obj_info in scene.walk():
+    # Type 0 represents character data
+    if obj_info["type"] == 0:
+        chara = obj_info["data"]["character"]
+
+        # Use face thumbnail as the character card image
+        chara.image = copy.deepcopy(chara.face_image)
+
+        # Save the character data
+        chara.save("./data/{}.png".format(name))
+```
 
 ### Others
 

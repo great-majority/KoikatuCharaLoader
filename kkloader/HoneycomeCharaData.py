@@ -32,6 +32,19 @@ class HoneycomeCharaData(kkloader.KoikatuCharaData):
             "GameInfo_HC": GameInfo_HC,
         }
 
+    def __str__(self) -> str:
+        """Return a string representation of the Honeycome character.
+
+        Returns:
+            String containing the header and character name.
+        """
+        header = self.header.decode("utf-8")
+        param = self["Parameter"].data
+        lastname = param.get("lastname", "")
+        firstname = param.get("firstname", "")
+        name = "{} {}".format(lastname, firstname).strip()
+        return "{}, {}".format(header, name)
+
 
 class Custom(BlockData):
     """Block data for Honeycome custom character appearance (face, body only).

@@ -458,7 +458,12 @@ class HoneycomeSceneObjectLoader:
         data["kinematic_mode"] = load_type(data_stream, "i")
 
         # Read anime info
-        data["anime_info"] = {"group": load_type(data_stream, "i"), "category": load_type(data_stream, "i"), "no": load_type(data_stream, "i")}
+        data["anime_info"] = {
+            "title": load_type(data_stream, "i"),
+            "group": load_type(data_stream, "i"),
+            "category": load_type(data_stream, "i"),
+            "no": load_type(data_stream, "i"),
+        }
 
         # Read hand patterns
         data["hand_patterns"] = [load_type(data_stream, "i"), load_type(data_stream, "i")]
@@ -474,8 +479,6 @@ class HoneycomeSceneObjectLoader:
 
         # Read lip sync
         data["lip_sync"] = bool(load_type(data_stream, "b"))
-
-        data["unknown_bytes_1"] = data_stream.read(4)
 
         # Read look at target info (LookAtTargetInfo.Load)
         # base.Load with _other=false: only dicKey and changeAmount, no treeState/visible
@@ -769,6 +772,7 @@ class HoneycomeSceneObjectLoader:
 
         # Write anime info
         anime_info = data["anime_info"]
+        data_stream.write(struct.pack("i", anime_info["title"]))
         data_stream.write(struct.pack("i", anime_info["group"]))
         data_stream.write(struct.pack("i", anime_info["category"]))
         data_stream.write(struct.pack("i", anime_info["no"]))
@@ -789,9 +793,6 @@ class HoneycomeSceneObjectLoader:
 
         # Write lip sync
         data_stream.write(struct.pack("b", int(data["lip_sync"])))
-
-        # Write unknown bytes (4 bytes)
-        data_stream.write(data["unknown_bytes_1"])
 
         # Write look at target (LookAtTargetInfo.Save - base.Save with _other=false)
         lookAtTarget = data["lookAtTarget"]

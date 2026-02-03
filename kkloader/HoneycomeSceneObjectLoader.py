@@ -633,7 +633,8 @@ class HoneycomeSceneObjectLoader:
         # Read light-specific data
         data["no"] = load_type(data_stream, "i")
 
-        data["unknown_bytes"] = data_stream.read(2)  # 0x0101
+        data["lightSwitch"] = bool(load_type(data_stream, "b"))
+        data["displayTarget"] = bool(load_type(data_stream, "b"))
         color_bytes = load_string(data_stream)
         data["color"] = HoneycomeSceneObjectLoader.parse_color_json(color_bytes.decode("utf-8"))
 
@@ -961,8 +962,9 @@ class HoneycomeSceneObjectLoader:
         # Write no
         data_stream.write(struct.pack("i", data["no"]))
 
-        # Write unknown_bytes (2 bytes)
-        data_stream.write(data["unknown_bytes"])
+        # Write light settings flags
+        data_stream.write(struct.pack("b", int(data["lightSwitch"])))
+        data_stream.write(struct.pack("b", int(data["displayTarget"])))
 
         # Write color as JSON string
         HoneycomeSceneObjectLoader._save_color_json(data_stream, data["color"])

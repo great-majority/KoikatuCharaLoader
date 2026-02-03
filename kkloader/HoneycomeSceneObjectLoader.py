@@ -1,3 +1,4 @@
+import io
 import json
 import struct
 from typing import Any, BinaryIO, Dict, Tuple, Type
@@ -470,7 +471,8 @@ class HoneycomeSceneObjectLoader:
             "scale": HoneycomeSceneObjectLoader._load_vector3(data_stream),
         }
 
-        data["unknown_bytes_2"] = data_stream.read(14)
+        # Seems to be serialized using Memorypack.
+        data["unknown"] = data_stream.read(14)
 
         # Read enable IK
         data["enable_ik"] = bool(load_type(data_stream, "b"))
@@ -500,8 +502,18 @@ class HoneycomeSceneObjectLoader:
         # Read is anime force loop
         data["is_anime_force_loop"] = bool(load_type(data_stream, "b"))
 
-        # Read voice ctrl?
-        data["unknown_bytes_3"] = data_stream.read(load_type(data_stream, "i"))
+        # Read voice control
+        vc_stream = io.BytesIO(data_stream.read(load_type(data_stream, "i")))
+        data["voiceCtrl"] = {"list": [], "repeat": None}
+        data["voiceCtrl"]["unknown"] = load_type(vc_stream, "b") # always 0x02
+        for _ in range(load_type(vc_stream, "i")):
+            voice_info = {
+                "group": load_type(vc_stream, "i"),
+                "category": load_type(vc_stream, "i"),
+                "no": load_type(vc_stream, "i")
+            }
+            data["voiceCtrl"]["list"].append(voice_info)
+        data["voiceCtrl"]["repeat"] = load_type(vc_stream, "i") # {0, 1, 2}
 
         # Read visible son
         data["visible_son"] = bool(load_type(data_stream, "b"))
@@ -517,10 +529,7 @@ class HoneycomeSceneObjectLoader:
         data["simple_color"] = HoneycomeSceneObjectLoader.parse_color_json(simple_color_json)
 
         # Read anime option param
-        data["anime_option_param"] = [load_type(data_stream, "f"), load_type(data_stream, "f")]
-
-        # Read unknown int
-        data["unknown_int_3"] = load_type(data_stream, "i")
+        data["anime_option_param"] = [load_type(data_stream, "f"), load_type(data_stream, "f"), load_type(data_stream, "f")]
 
         # Read neck byte data
         neck_data_length = load_type(data_stream, "i")
@@ -785,7 +794,7 @@ class HoneycomeSceneObjectLoader:
         HoneycomeSceneObjectLoader._save_vector3(data_stream, lookAtTarget["scale"])
 
         # Write unknown bytes (14 bytes)
-        data_stream.write(data["unknown_bytes_2"])
+        data_stream.write(data["unknown"])
 
         # Write enable IK
         data_stream.write(struct.pack("b", int(data["enable_ik"])))
@@ -821,9 +830,19 @@ class HoneycomeSceneObjectLoader:
         # Write is anime force loop
         data_stream.write(struct.pack("b", int(data["is_anime_force_loop"])))
 
-        # Write unknown bytes (length-prefixed by data length)
-        data_stream.write(struct.pack("i", len(data["unknown_bytes_3"])))
-        data_stream.write(data["unknown_bytes_3"])
+        # Write voice control (length-prefixed)
+        vc_buf = io.BytesIO()
+        vc_buf.write(struct.pack("b", int(data["voiceCtrl"]["unknown"])))
+        vc_list = data["voiceCtrl"]["list"]
+        vc_buf.write(struct.pack("i", len(vc_list)))
+        for voice_info in vc_list:
+            vc_buf.write(struct.pack("i", voice_info["group"]))
+            vc_buf.write(struct.pack("i", voice_info["category"]))
+            vc_buf.write(struct.pack("i", voice_info["no"]))
+        vc_buf.write(struct.pack("i", data["voiceCtrl"]["repeat"]))
+        vc_bytes = vc_buf.getvalue()
+        data_stream.write(struct.pack("i", len(vc_bytes)))
+        data_stream.write(vc_bytes)
 
         # Write visible son
         data_stream.write(struct.pack("b", int(data["visible_son"])))
@@ -839,13 +858,10 @@ class HoneycomeSceneObjectLoader:
         data_stream.write(struct.pack("b", len(simple_color_bytes)))
         data_stream.write(simple_color_bytes)
 
-        # Write anime option param (2 floats)
+        # Write anime option param (3 floats)
         anime_option_param = data["anime_option_param"]
-        for i in range(2):
+        for i in range(3):
             data_stream.write(struct.pack("f", anime_option_param[i]))
-
-        # Write unknown int
-        data_stream.write(struct.pack("i", data["unknown_int_3"]))
 
         # Write neck byte data
         neck_byte_data = data["neck_byte_data"]

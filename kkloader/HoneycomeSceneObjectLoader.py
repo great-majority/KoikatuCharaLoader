@@ -242,48 +242,29 @@ class HoneycomeSceneObjectLoader:
         """Load pattern info data (Honeycome version)"""
         pattern_data = {}
 
-        # Read unknown float (always 1.0?)
-        pattern_data["unknown_float"] = load_type(data_stream, "f")
-
-        # Read key
+        # Read pattern settings
         pattern_data["key"] = load_type(data_stream, "i")
-
-        if pattern_data["key"] == -1:
-            pattern_data["pattern_filepath"] = load_string(data_stream).decode("utf-8")
-            pattern_data["unknown_bool"] = bool(load_type(data_stream, "b"))
-
-        else:
-            pattern_data["clamp"] = bool(load_type(data_stream, "b"))
-            pattern_data["unknown_bool"] = bool(load_type(data_stream, "b"))
+        pattern_data["filepath"] = load_string(data_stream).decode("utf-8")
+        pattern_data["clamp"] = bool(load_type(data_stream, "b"))
 
         # Read uv (Vector4)
         uv_json = load_string(data_stream).decode("utf-8")
         pattern_data["uv"] = json.loads(uv_json)
+
+        # Read rotation
+        pattern_data["rot"] = load_type(data_stream, "f")
 
         return pattern_data
 
     @staticmethod
     def save_pattern_info(data_stream: BinaryIO, pattern_data: Dict[str, Any]) -> None:
         """Save pattern info data (Honeycome version)"""
-        # Write unknown float
-        data_stream.write(struct.pack("f", pattern_data["unknown_float"]))
-
-        # Write key
+        # Write pattern settings
         data_stream.write(struct.pack("i", pattern_data["key"]))
-
-        if pattern_data["key"] == -1:
-            # Write pattern_filepath
-            write_string(data_stream, pattern_data["pattern_filepath"].encode("utf-8"))
-            # Write unknown bool
-            data_stream.write(struct.pack("b", int(pattern_data["unknown_bool"])))
-        else:
-            # Write clamp
-            data_stream.write(struct.pack("b", int(pattern_data["clamp"])))
-            # Write unknown bool
-            data_stream.write(struct.pack("b", int(pattern_data["unknown_bool"])))
-
-        # Write uv (Vector4)
+        write_string(data_stream, pattern_data["filepath"].encode("utf-8"))
+        data_stream.write(struct.pack("b", int(pattern_data["clamp"])))
         write_string(data_stream, json.dumps(pattern_data["uv"], separators=(",", ":")).encode("utf-8"))
+        data_stream.write(struct.pack("f", pattern_data["rot"]))
 
     @staticmethod
     def _load_route_point_info(data_stream: BinaryIO, version: str | None = None) -> Dict[str, Any]:
@@ -574,11 +555,13 @@ class HoneycomeSceneObjectLoader:
     def load_item_info(data_stream: BinaryIO, obj_info: Dict[str, Any], version: str | None = None) -> None:
         data = HoneycomeSceneObjectLoader._load_object_info_base(data_stream)
 
-        data["unknown_1"] = load_type(data_stream, "i")
+        data["title"] = load_type(data_stream, "i")
         data["group"] = load_type(data_stream, "i")
         data["category"] = load_type(data_stream, "i")
         data["no"] = load_type(data_stream, "i")
-        data["unknown_3"] = data_stream.read(8)
+
+        data["anime_pattern"] = load_type(data_stream, "i") # always 0
+        data["anime_speed"] = load_type(data_stream, "f")
 
         data["colors"] = []
         for _ in range(8):
@@ -588,14 +571,14 @@ class HoneycomeSceneObjectLoader:
             else:
                 data["colors"].append(None)
 
-        data["unknown_4"] = load_type(data_stream, "i")
-        data["unknown_5"] = bool(load_type(data_stream, "b"))
+        data["shadow_type"] = load_type(data_stream, "i")
+        data["shadow_switch"] = bool(load_type(data_stream, "b"))
+        data["shadow_strength"] = load_type(data_stream, "f")
 
         data["patterns"] = []
         for _ in range(3):
             data["patterns"].append(HoneycomeSceneObjectLoader.load_pattern_info(data_stream))
 
-        data["unknown_6"] = data_stream.read(4)
         data["alpha"] = load_type(data_stream, "f")
 
         line_color_json = load_string(data_stream).decode("utf-8")
@@ -607,20 +590,19 @@ class HoneycomeSceneObjectLoader:
         data["emission_power"] = load_type(data_stream, "f")
         data["light_cancel"] = load_type(data_stream, "f")
 
-        data["unknown_7"] = data_stream.read(6)
-        data["unknown_8"] = load_string(data_stream).decode("utf-8")
-        data["unknown_9"] = data_stream.read(4)
+        # Seems unused in game
+        data["panel"] = HoneycomeSceneObjectLoader.load_pattern_info(data_stream)
 
         data["enable_fk"] = bool(load_type(data_stream, "b"))
-
         bones_count = load_type(data_stream, "i")
         data["bones"] = {}
         for _ in range(bones_count):
             bone_key = load_string(data_stream).decode("utf-8")
             data["bones"][bone_key] = HoneycomeSceneObjectLoader.load_bone_info(data_stream)
 
-        data["unknown_10"] = bool(load_type(data_stream, "b"))
+        data["enable_dynamic_bone"] = bool(load_type(data_stream, "b"))
         data["anime_normalized_time"] = load_type(data_stream, "f")
+
         data["child"] = HoneycomeSceneObjectLoader.load_child_objects(data_stream, version)
         obj_info["data"] = data
 
@@ -896,23 +878,24 @@ class HoneycomeSceneObjectLoader:
         data = obj_info["data"]
         HoneycomeSceneObjectLoader._save_object_info_base(data_stream, data)
 
-        data_stream.write(struct.pack("i", data["unknown_1"]))
+        data_stream.write(struct.pack("i", data["title"]))
         data_stream.write(struct.pack("i", data["group"]))
         data_stream.write(struct.pack("i", data["category"]))
         data_stream.write(struct.pack("i", data["no"]))
-        data_stream.write(data["unknown_3"])
+        data_stream.write(struct.pack("i", data["anime_pattern"]))
+        data_stream.write(struct.pack("f", data["anime_speed"]))
 
         for i in range(8):
             color = data["colors"][i] if i < len(data["colors"]) and data["colors"][i] is not None else {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0}
             write_string(data_stream, json.dumps(color, separators=(",", ":")).encode("utf-8"))
 
-        data_stream.write(struct.pack("i", data["unknown_4"]))
-        data_stream.write(struct.pack("b", int(data["unknown_5"])))
+        data_stream.write(struct.pack("i", data["shadow_type"]))
+        data_stream.write(struct.pack("b", int(data["shadow_switch"])))
+        data_stream.write(struct.pack("f", data["shadow_strength"]))
 
         for pattern in data["patterns"]:
             HoneycomeSceneObjectLoader.save_pattern_info(data_stream, pattern)
 
-        data_stream.write(data["unknown_6"])
         data_stream.write(struct.pack("f", data["alpha"]))
 
         # Note: line_color/line_width exist since version >= 0.0.4 (always true for 0.0.5 and 1.0.0)
@@ -929,9 +912,7 @@ class HoneycomeSceneObjectLoader:
         data_stream.write(struct.pack("f", data["emission_power"]))
         data_stream.write(struct.pack("f", data["light_cancel"]))
 
-        data_stream.write(data["unknown_7"])
-        write_string(data_stream, data["unknown_8"].encode("utf-8"))
-        data_stream.write(data["unknown_9"])
+        HoneycomeSceneObjectLoader.save_pattern_info(data_stream, data["panel"])
 
         data_stream.write(struct.pack("b", int(data["enable_fk"])))
         data_stream.write(struct.pack("i", len(data["bones"])))
@@ -939,7 +920,7 @@ class HoneycomeSceneObjectLoader:
             write_string(data_stream, bone_key.encode("utf-8"))
             HoneycomeSceneObjectLoader.save_bone_info(data_stream, bone_data)
 
-        data_stream.write(struct.pack("b", int(data["unknown_10"])))
+        data_stream.write(struct.pack("b", int(data["enable_dynamic_bone"])))
         data_stream.write(struct.pack("f", data["anime_normalized_time"]))
 
         child_list = data["child"]

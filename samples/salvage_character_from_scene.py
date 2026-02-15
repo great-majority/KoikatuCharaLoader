@@ -19,12 +19,10 @@ def search_characters_from_scene(filename):
     scene = KoikatuSceneData.load(filename)
 
     charas = []
-    # Use walk() to iterate through all objects including nested children
-    for _, obj_info in scene.walk():
-        # Type 0 is character (OICharInfo)
-        if obj_info["type"] == 0:
-            chara = obj_info["data"]["character"]
-            charas.append(chara)
+    # Use walk() with type filter to iterate character objects including nested children
+    for _, obj_info in scene.walk(type=KoikatuSceneData.CHARACTER):
+        chara = obj_info["data"]["character"]
+        charas.append(chara)
 
     return charas
 

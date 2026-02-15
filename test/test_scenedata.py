@@ -120,6 +120,29 @@ def test_count_object_types_kks_scene():
     assert scene_data.count_object_types() == {"Light": 1, "Folder": 1, "Item": 3, "Character": 1}
 
 
+def test_walk_filter_object_type_koikatu():
+    scene_data = KoikatuSceneData.load("./data/kk_scene.png")
+    chars = list(scene_data.walk(type=KoikatuSceneData.CHARACTER))
+    assert len(chars) == scene_data.count_object_types()["Character"]
+    assert all(obj["type"] == KoikatuSceneData.CHARACTER for _, obj in chars)
+
+
+def test_walk_filter_object_type_koikatu_with_depth():
+    scene_data = KoikatuSceneData.load("./data/kks_scene.png")
+    lights = list(scene_data.walk(include_depth=True, type=KoikatuSceneData.LIGHT))
+    assert len(lights) == scene_data.count_object_types()["Light"]
+    assert all(obj["type"] == KoikatuSceneData.LIGHT for _, obj, _ in lights)
+
+
+def test_walk_filter_type_conflict_koikatu():
+    scene_data = KoikatuSceneData.load("./data/kks_scene.png")
+    try:
+        list(scene_data.walk(object_type=KoikatuSceneData.CHARACTER, type=KoikatuSceneData.LIGHT))
+        assert False, "Expected ValueError when object_type and type differ"
+    except ValueError:
+        pass
+
+
 def test_scene_to_dict():
     """Test converting a scene to a dictionary"""
     scene_data = KoikatuSceneData.load("./data/kk_scene_simple.png")

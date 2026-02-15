@@ -190,6 +190,10 @@ for key, obj, depth in scene.walk(include_depth=True):
     indent = "  " * depth
     obj_type = obj["type"]
     print(f"{indent}[depth={depth}] Key: {key}, Type: {obj_type}")
+
+# typeを指定してのイテレーションも可能
+for key, obj in scene.walk(type=KoikatuSceneData.CHARACTER):
+    print(f"Character Key: {key}")
 ```
 
 オブジェクトタイプ: 0=Character, 1=Item, 2=Light, 3=Folder, 4=Route, 5=Camera, 7=Text
@@ -205,17 +209,15 @@ from kkloader import KoikatuSceneData
 # シーンデータのロード
 scene = KoikatuSceneData.load("./data/kk_scene.png")
 
-# シーンに含まれるオブジェクトをすべてイテレーションする
-for _, obj_info in scene.walk():
-    # Type 0がキャラデータを表している
-    if obj_info["type"] == 0:
-        chara = obj_info["data"]["character"]
+# シーンに含まれるキャラオブジェクトのみをイテレーションする
+for _, obj_info in scene.walk(type=KoikatuSceneData.CHARACTER):
+    chara = obj_info["data"]["character"]
 
-        # キャラデータの顔のサムネイル画像をpngデータにする
-        chara.image = copy.deepcopy(chara.face_image)
+    # キャラデータの顔のサムネイル画像をpngデータにする
+    chara.image = copy.deepcopy(chara.face_image)
 
-        # キャラデータの保存
-        chara.save("./data/{}.png".format(name))
+    # キャラデータの保存
+    chara.save("./data/{}.png".format(name))
 ```
 
 ### その他

@@ -21,6 +21,25 @@ def test_load_honeycome_scene_items():
     assert has_folder, "Expected at least one folder object in hc_scene_items.png"
 
 
+def test_honeycome_scene_repr_fields():
+    scene_data = HoneycomeSceneData.load("./data/hc_scene_items.png")
+    repr_text = repr(scene_data)
+
+    assert f"version={scene_data.version!r}" in repr_text
+    assert f"title={scene_data.title!r}" in repr_text
+    assert f"user_id={scene_data.user_id!r}" in repr_text
+    assert f"data_id={scene_data.data_id!r}" in repr_text
+    assert f"original_filename={os.path.abspath('./data/hc_scene_items.png')!r}" in repr_text
+    assert f"footer_marker={scene_data.footer_marker!r}" in repr_text
+
+
+def test_honeycome_scene_original_filename_for_bytes_input():
+    with open("./data/hc_scene_items.png", "rb") as f:
+        raw_data = f.read()
+    scene_data = HoneycomeSceneData.load(raw_data)
+    assert scene_data.original_filename is None
+
+
 def test_honeycome_scene_to_dict():
     """Test converting a Honeycome scene to a dictionary"""
     scene_data = HoneycomeSceneData.load("./data/hc_scene_items.png")

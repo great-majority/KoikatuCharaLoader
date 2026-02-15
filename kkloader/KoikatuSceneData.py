@@ -6,6 +6,7 @@ Scene files are PNG images with binary scene data appended after the PNG IEND ch
 
 import io
 import json
+import os
 import struct
 from typing import Any, Self
 
@@ -93,6 +94,7 @@ class KoikatuSceneData:
         self.mod_unknown: int = 0
         self.mod_data: Any = None
         self.mod_tail: bytes = b""
+        self.original_filename: str | None = None
 
     @classmethod
     def load(cls, filelike: str | bytes | io.BytesIO) -> Self:
@@ -106,11 +108,13 @@ class KoikatuSceneData:
             KoikatuSceneData: The loaded scene data
         """
         ks = cls()
+        ks.original_filename = None
 
         if isinstance(filelike, str):
             with open(filelike, "br") as f:
                 data = f.read()
             data_stream = io.BytesIO(data)
+            ks.original_filename = os.path.abspath(filelike)
         elif isinstance(filelike, bytes):
             data_stream = io.BytesIO(filelike)
         elif isinstance(filelike, io.BytesIO):
@@ -577,6 +581,17 @@ class KoikatuSceneData:
     def __str__(self):
         """String representation of the scene data"""
         return f"KoikatuSceneData(version={self.version}, objects={len(self.objects)})"
+
+    def __repr__(self):
+        """Return a concise debug representation of Koikatu scene data."""
+        return (
+            f"{self.__class__.__name__}("
+            f"version={self.version!r}, "
+            f"original_filename={self.original_filename!r}, "
+            f"tail={self.tail!r}, "
+            f"has_mod={bool(self.mod_header)!r}"
+            ")"
+        )
 
     # ============================================================
     # 3. PRIMITIVE TYPE HELPERS

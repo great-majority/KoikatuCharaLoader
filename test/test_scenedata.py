@@ -1,3 +1,4 @@
+import os
 import tempfile
 
 from kkloader import KoikatuSceneData
@@ -29,6 +30,27 @@ def test_load_simple_scene():
     assert "colors" in obj_data
     assert "patterns" in obj_data
     assert "panel" in obj_data
+
+
+def test_koikatu_scene_repr_fields():
+    scene_data = KoikatuSceneData.load("./data/kk_scene_simple.png")
+    repr_text = repr(scene_data)
+    assert f"version={scene_data.version!r}" in repr_text
+    assert f"original_filename={os.path.abspath('./data/kk_scene_simple.png')!r}" in repr_text
+    assert f"tail={scene_data.tail!r}" in repr_text
+    assert "has_mod=False" in repr_text
+
+
+def test_koikatu_scene_repr_has_mod_for_mod_scene():
+    scene_data = KoikatuSceneData.load("./data/kk_scene_mod.png")
+    assert "has_mod=True" in repr(scene_data)
+
+
+def test_koikatu_scene_original_filename_for_bytes_input():
+    with open("./data/kk_scene_simple.png", "rb") as f:
+        raw_data = f.read()
+    scene_data = KoikatuSceneData.load(raw_data)
+    assert scene_data.original_filename is None
 
 
 def count_types_recursive(objects):

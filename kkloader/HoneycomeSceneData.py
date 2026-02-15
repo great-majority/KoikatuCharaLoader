@@ -1,6 +1,7 @@
 """Honeycome scene data loader and saver."""
 
 import io
+import os
 import struct
 import sys
 from contextlib import contextmanager
@@ -58,6 +59,7 @@ class HoneycomeSceneData:
         self.unknown_tail_extra: bytes | None = None
         self.crypto_key: bytes | None = None
         self.crypto_iv: bytes | None = None
+        self.original_filename: str | None = None
 
     @staticmethod
     @contextmanager
@@ -92,11 +94,13 @@ class HoneycomeSceneData:
         hs = cls()
         hs.crypto_key = None
         hs.crypto_iv = None
+        hs.original_filename = None
 
         if isinstance(filelike, str):
             with open(filelike, "br") as f:
                 data = f.read()
             data_stream = io.BytesIO(data)
+            hs.original_filename = os.path.abspath(filelike)
         elif isinstance(filelike, bytes):
             data_stream = io.BytesIO(filelike)
         elif isinstance(filelike, io.BytesIO):
@@ -347,3 +351,16 @@ class HoneycomeSceneData:
     def __str__(self):
         """String representation of the scene data"""
         return f"HoneycomeSceneData(version={self.version}, objects={len(self.objects)})"
+
+    def __repr__(self):
+        """Return a concise debug representation of Honeycome scene data."""
+        return (
+            f"{self.__class__.__name__}("
+            f"version={self.version!r}, "
+            f"title={self.title!r}, "
+            f"user_id={self.user_id!r}, "
+            f"data_id={self.data_id!r}, "
+            f"original_filename={self.original_filename!r}, "
+            f"footer_marker={self.footer_marker!r}"
+            ")"
+        )

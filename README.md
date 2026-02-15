@@ -25,6 +25,8 @@ If you just want to quickly try out this module, you can click the "Open In Cola
 $ python
 >>> from kkloader import KoikatuCharaData # Import the module.
 >>> kc = KoikatuCharaData.load("./data/kk_chara.png") # Load character data.
+>>> kc
+KoikatuCharaData(product_no=100, header='【KoiKatuChara】', version='0.0.0', name='白峰 一乃 ( かずのん )', blocks=['Custom', 'Coordinate', 'Parameter', 'Status'], has_kkex=False, original_file_path='/path/to/data/kk_chara.png')
 >>> kc["Parameter"]["nickname"] # Print the character's nickname.
 'かずのん'
 >>> kc["Parameter"]["nickname"] = "chikarin" # Change the nickname.

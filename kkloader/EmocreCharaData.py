@@ -105,14 +105,3 @@ class EmocreCharaData(kkloader.KoikatuCharaData):
             "packages": self.packages,
         }
         return data
-
-    def __str__(self) -> str:
-        """Return a string representation of the EmotionCreators character.
-
-        Returns:
-            String containing header, name, user ID, and data ID.
-        """
-        header = self.header.decode("utf-8")
-        userid = self.userid.decode("ascii")
-        dataid = self.dataid.decode("ascii")
-        return "{}, {}, userid:{}, dataid:{}".format(header, self["Parameter"]["fullname"], userid, dataid)

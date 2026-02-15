@@ -189,6 +189,10 @@ for key, obj, depth in scene.walk(include_depth=True):
     indent = "  " * depth
     obj_type = obj["type"]
     print(f"{indent}[depth={depth}] Key: {key}, Type: {obj_type}")
+
+# Type-filtered iteration is also possible
+for key, obj in scene.walk(object_type=KoikatuSceneData.CHARACTER):
+    print(f"Character Key: {key}")
 ```
 
 Object types: 0=Character, 1=Item, 2=Light, 3=Folder, 4=Route, 5=Camera, 7=Text
@@ -204,17 +208,15 @@ from kkloader import KoikatuSceneData
 # Load scene data
 scene = KoikatuSceneData.load("./data/kk_scene.png")
 
-# Iterate over all objects in the scene
-for _, obj_info in scene.walk():
-    # Type 0 represents character data
-    if obj_info["type"] == 0:
-        chara = obj_info["data"]["character"]
+# Iterate only character objects in the scene
+for _, obj_info in scene.walk(object_type=KoikatuSceneData.CHARACTER):
+    chara = obj_info["data"]["character"]
 
-        # Use face thumbnail as the character card image
-        chara.image = copy.deepcopy(chara.face_image)
+    # Use face thumbnail as the character card image
+    chara.image = copy.deepcopy(chara.face_image)
 
-        # Save the character data
-        chara.save("./data/{}.png".format(name))
+    # Save the character data
+    chara.save("./data/{}.png".format(name))
 ```
 
 ### Others

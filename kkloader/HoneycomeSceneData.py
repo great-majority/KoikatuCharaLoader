@@ -31,6 +31,13 @@ class HoneycomeSceneData:
         unknown_tail: Remaining unparsed data (lights, camera, etc.).
     """
 
+    CHARACTER = 0
+    ITEM = 1
+    LIGHT = 2
+    FOLDER = 3
+    ROUTE = 4
+    CAMERA = 5
+
     def __init__(self) -> None:
         """Initialize scene data with default values."""
         self.image: bytes | None = None
@@ -60,6 +67,15 @@ class HoneycomeSceneData:
         self.crypto_key: bytes | None = None
         self.crypto_iv: bytes | None = None
         self.original_filename: str | None = None
+
+    OBJECT_TYPE_NAMES: dict[int, str] = {
+        CHARACTER: "Character",
+        ITEM: "Item",
+        LIGHT: "Light",
+        FOLDER: "Folder",
+        ROUTE: "Route",
+        CAMERA: "Camera",
+    }
 
     @staticmethod
     @contextmanager
@@ -269,7 +285,7 @@ class HoneycomeSceneData:
         encryptor = Cipher(algorithms.AES(self.crypto_key), modes.CBC(self.crypto_iv), backend=default_backend()).encryptor()
         return encryptor.update(data) + encryptor.finalize()
 
-    def walk(self, include_depth: bool = False):
+    def walk(self, include_depth: bool = False, object_type: int | None = None):
         """
         Recursively iterate over all objects in the scene, including nested child objects.
 
@@ -283,6 +299,8 @@ class HoneycomeSceneData:
         Args:
             include_depth: If True, yields (key, obj_info, depth) tuples.
                           If False, yields (key, obj_info) tuples.
+            object_type: Optional object type filter. If provided, only objects
+                         with matching type are yielded.
 
         Yields:
             If include_depth is False:
@@ -299,7 +317,14 @@ class HoneycomeSceneData:
             >>> # With depth:
             >>> for key, obj, depth in scene.walk(include_depth=True):
             ...     print(f"{'  ' * depth}Object {key}: type={obj['type']}")
+            >>> # Filter by type (characters):
+            >>> for key, obj in scene.walk(object_type=HoneycomeSceneData.CHARACTER):
+            ...     print(f"Character key={key}")
         """
+        def _should_yield(obj_info: dict[str, Any]) -> bool:
+            if object_type is None:
+                return True
+            return obj_info.get("type") == object_type
 
         def _walk_children(obj_info, depth):
             """Recursively walk through child objects."""
@@ -315,27 +340,41 @@ class HoneycomeSceneData:
             if obj_type == 0:
                 for child_key, child_list in child.items():
                     for idx, child_obj in enumerate(child_list):
-                        if include_depth:
-                            yield (child_key, idx), child_obj, depth + 1
-                        else:
-                            yield (child_key, idx), child_obj
+                        if _should_yield(child_obj):
+                            if include_depth:
+                                yield (child_key, idx), child_obj, depth + 1
+                            else:
+                                yield (child_key, idx), child_obj
                         yield from _walk_children(child_obj, depth + 1)
             else:
                 # Item (1), Folder (3), Route (4) have List[ObjectInfo] structure
                 for idx, child_obj in enumerate(child):
-                    if include_depth:
-                        yield idx, child_obj, depth + 1
-                    else:
-                        yield idx, child_obj
+                    if _should_yield(child_obj):
+                        if include_depth:
+                            yield idx, child_obj, depth + 1
+                        else:
+                            yield idx, child_obj
                     yield from _walk_children(child_obj, depth + 1)
 
         # Iterate over top-level objects
         for key, obj_info in self.objects.items():
-            if include_depth:
-                yield key, obj_info, 0
-            else:
-                yield key, obj_info
+            if _should_yield(obj_info):
+                if include_depth:
+                    yield key, obj_info, 0
+                else:
+                    yield key, obj_info
             yield from _walk_children(obj_info, 0)
+
+    def count_object_types(self) -> dict[str, int]:
+        """Count scene objects by type name across the full object tree."""
+        counts: dict[str, int] = {}
+        for _, obj_info in self.walk():
+            obj_type = obj_info.get("type")
+            if not isinstance(obj_type, int):
+                continue
+            name = self.OBJECT_TYPE_NAMES.get(obj_type, f"Unknown({obj_type})")
+            counts[name] = counts.get(name, 0) + 1
+        return counts
 
     def to_dict(self):
         """Convert the scene data to a dictionary"""

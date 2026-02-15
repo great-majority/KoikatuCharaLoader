@@ -226,6 +226,37 @@ def test_load_honeycome_scene_objects():
     assert type_counts.get(4, 0) == 1, "Expected 1 route object"
 
 
+def test_count_object_types_honeycome_scene_items():
+    scene_data = HoneycomeSceneData.load("./data/hc_scene_items.png")
+    assert scene_data.count_object_types() == {"Folder": 76, "Item": 150}
+
+
+def test_count_object_types_honeycome_scene_objects():
+    scene_data = HoneycomeSceneData.load("./data/hc_scene_objects.png")
+    assert scene_data.count_object_types() == {
+        "Folder": 8,
+        "Item": 1,
+        "Character": 1,
+        "Light": 3,
+        "Camera": 1,
+        "Route": 1,
+    }
+
+
+def test_walk_filter_object_type_honeycome():
+    scene_data = HoneycomeSceneData.load("./data/hc_scene_objects.png")
+    folders = list(scene_data.walk(object_type=HoneycomeSceneData.FOLDER))
+    assert len(folders) == scene_data.count_object_types()["Folder"]
+    assert all(obj["type"] == HoneycomeSceneData.FOLDER for _, obj in folders)
+
+
+def test_walk_filter_object_type_honeycome_with_depth():
+    scene_data = HoneycomeSceneData.load("./data/hc_scene_objects.png")
+    cameras = list(scene_data.walk(include_depth=True, object_type=HoneycomeSceneData.CAMERA))
+    assert len(cameras) == scene_data.count_object_types()["Camera"]
+    assert all(obj["type"] == HoneycomeSceneData.CAMERA for _, obj, _ in cameras)
+
+
 def test_light_data_preservation():
     """Test that light-specific data is preserved through save/load cycle"""
     scene_data = HoneycomeSceneData.load("./data/hc_scene_objects.png")

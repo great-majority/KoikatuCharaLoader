@@ -2,6 +2,7 @@ import base64
 import copy
 import io
 import json
+import os
 import struct
 from typing import Any, ClassVar, Self
 
@@ -59,6 +60,7 @@ class KoikatuCharaData:
     face_image: bytes
     blockdata: list[str]
     unknown_blockdata: list[str]
+    original_file_path: str | None
     original_lstinfo_order: list[str]
     serialized_lstinfo_order: list[str]
 
@@ -88,11 +90,13 @@ class KoikatuCharaData:
             ValueError: If the input type is not supported.
         """
         kc = cls()
+        kc.original_file_path = None
 
         if isinstance(filelike, str):
             with open(filelike, "br") as f:
                 data = f.read()
             data_stream = io.BytesIO(data)
+            kc.original_file_path = os.path.abspath(filelike)
 
         elif isinstance(filelike, bytes):
             data_stream = io.BytesIO(filelike)
@@ -267,19 +271,79 @@ class KoikatuCharaData:
             data.update({"face_image": base64.b64encode(self.face_image).decode("ascii")})
         return data
 
-    def __str__(self) -> str:
-        """Return a string representation of the character.
+    def _repr_name(self) -> str:
+        """Return the character name used by __repr__.
 
         Returns:
-            String containing the header and character name.
+            Character name text inferred from available Parameter fields.
         """
-        header = self.header.decode("utf-8")
-        name = "{} {} ( {} )".format(
-            self["Parameter"]["lastname"],
-            self["Parameter"]["firstname"],
-            self["Parameter"]["nickname"],
-        )
-        return "{}, {}".format(header, name)
+        parameter = getattr(getattr(self, "Parameter", None), "data", {})
+        if not isinstance(parameter, dict):
+            return ""
+
+        fullname = str(parameter.get("fullname", "")).strip()
+        if fullname:
+            return fullname
+
+        lastname = str(parameter.get("lastname", "")).strip()
+        firstname = str(parameter.get("firstname", "")).strip()
+        nickname = str(parameter.get("nickname", "")).strip()
+        name = "{} {}".format(lastname, firstname).strip()
+        if nickname:
+            return "{} ( {} )".format(name, nickname).strip()
+        return name
+
+    def _repr_optional_identifiers(self) -> list[tuple[str, str]]:
+        """Return optional identifier fields for __repr__.
+
+        Returns:
+            Ordered list of (field_name, value) for identifiers that exist.
+        """
+        about_data = getattr(getattr(self, "About", None), "data", {})
+        if not isinstance(about_data, dict):
+            about_data = {}
+
+        sources = {
+            "userid": [getattr(self, "userid", None), about_data.get("userID"), about_data.get("userid")],
+            "dataid": [getattr(self, "dataid", None), about_data.get("dataID"), about_data.get("dataid")],
+        }
+
+        identifiers: list[tuple[str, str]] = []
+        for field_name, candidates in sources.items():
+            for raw_value in candidates:
+                if raw_value is None:
+                    continue
+                if isinstance(raw_value, bytes):
+                    value = raw_value.decode("utf-8", errors="replace").strip()
+                else:
+                    value = str(raw_value).strip()
+                if value == "":
+                    continue
+                identifiers.append((field_name, value))
+                break
+        return identifiers
+
+    def __repr__(self) -> str:
+        """Return a concise debug representation of the character data."""
+        blocks = getattr(self, "blockdata", [])
+        if not isinstance(blocks, list):
+            blocks = []
+        header_raw = getattr(self, "header", None)
+        version_raw = getattr(self, "version", None)
+        header_text = header_raw.decode("utf-8", errors="replace")
+        version_text = version_raw.decode("utf-8", errors="replace")
+
+        fields = [
+            f"product_no={getattr(self, 'product_no', None)!r}",
+            f"header={header_text!r}",
+            f"version={version_text!r}",
+            f"name={self._repr_name()!r}",
+            f"blocks={blocks!r}",
+            f"has_kkex={'KKEx' in blocks}",
+            f"original_file_path={getattr(self, 'original_file_path', None)!r}",
+        ]
+        fields.extend([f"{k}={v!r}" for k, v in self._repr_optional_identifiers()])
+        return f"{self.__class__.__name__}({', '.join(fields)})"
 
     def __getitem__(self, key: str) -> "BlockData":
         """Get a block data by name.

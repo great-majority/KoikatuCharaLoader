@@ -19,6 +19,14 @@ def test_load_character():
     assert hasattr(kc, "Coordinate")
     assert hasattr(kc, "Parameter")
     assert hasattr(kc, "Status")
+    assert kc.original_file_path == os.path.abspath("./data/kk_chara.png")
+
+
+def test_load_character_from_bytes_has_no_original_file_path():
+    with open("./data/kk_chara.png", "rb") as f:
+        raw_data = f.read()
+    kc = KoikatuCharaData.load(raw_data)
+    assert kc.original_file_path is None
 
 
 def test_load_sunshine_character():
@@ -238,3 +246,81 @@ def test_json_aicomi():
     ac = AicomiCharaData.load("./data/ac_chara.png")
     tmpfile = tempfile.NamedTemporaryFile()
     ac.save_json(tmpfile.name)
+
+
+def _assert_common_repr_fields(chara_data, expected_name):
+    repr_text = repr(chara_data)
+    assert f"product_no={chara_data.product_no!r}" in repr_text
+    assert f"header={chara_data.header.decode('utf-8')!r}" in repr_text
+    assert f"version={chara_data.version.decode('utf-8')!r}" in repr_text
+    assert f"name={expected_name!r}" in repr_text
+    assert f"blocks={chara_data.blockdata!r}" in repr_text
+    assert f"has_kkex={'KKEx' in chara_data.blockdata}" in repr_text
+    assert f"original_file_path={chara_data.original_file_path!r}" in repr_text
+
+
+def _expected_repr_name(chara_data):
+    param = chara_data["Parameter"].data
+    fullname = str(param.get("fullname", "")).strip()
+    if fullname:
+        return fullname
+    lastname = str(param.get("lastname", "")).strip()
+    firstname = str(param.get("firstname", "")).strip()
+    nickname = str(param.get("nickname", "")).strip()
+    name = "{} {}".format(lastname, firstname).strip()
+    if nickname:
+        return "{} ( {} )".format(name, nickname).strip()
+    return name
+
+
+def test_repr_koikatu_fields():
+    kc = KoikatuCharaData.load("./data/kk_chara.png")
+    expected_name = _expected_repr_name(kc)
+    _assert_common_repr_fields(kc, expected_name)
+
+
+def test_repr_mod_character_has_kkex():
+    kc = KoikatuCharaData.load("./data/kk_mod_chara.png")
+    assert "has_kkex=True" in repr(kc)
+
+
+def test_repr_emocre_name():
+    ec = EmocreCharaData.load("./data/ec_chara.png")
+    expected_name = _expected_repr_name(ec)
+    _assert_common_repr_fields(ec, expected_name)
+    repr_text = repr(ec)
+    assert f"userid={ec.userid.decode('utf-8')!r}" in repr_text
+    assert f"dataid={ec.dataid.decode('utf-8')!r}" in repr_text
+
+
+def test_repr_sunshine_contains_about_guids():
+    kks = KoikatuCharaData.load("./data/kks_chara.png")
+    repr_text = repr(kks)
+    assert f"userid={kks['About']['userID']!r}" in repr_text
+    assert f"dataid={kks['About']['dataID']!r}" in repr_text
+
+
+def test_repr_honeycome_like_name_and_about_guids():
+    for cls, path in [
+        (HoneycomeCharaData, "./data/hc_chara.png"),
+        (SummerVacationCharaData, "./data/sv_chara.png"),
+        (AicomiCharaData, "./data/ac_chara.png"),
+    ]:
+        chara = cls.load(path)
+        repr_text = repr(chara)
+        expected_name = _expected_repr_name(chara)
+        _assert_common_repr_fields(chara, expected_name)
+        assert f"userid={chara['About']['userID']!r}" in repr_text
+        assert f"dataid={chara['About']['dataID']!r}" in repr_text
+
+
+def test_character_str_falls_back_to_repr():
+    samples = [
+        KoikatuCharaData.load("./data/kk_chara.png"),
+        EmocreCharaData.load("./data/ec_chara.png"),
+        HoneycomeCharaData.load("./data/hc_chara.png"),
+        SummerVacationCharaData.load("./data/sv_chara.png"),
+        AicomiCharaData.load("./data/ac_chara.png"),
+    ]
+    for chara in samples:
+        assert str(chara) == repr(chara)

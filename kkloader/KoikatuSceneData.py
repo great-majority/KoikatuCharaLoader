@@ -96,6 +96,16 @@ class KoikatuSceneData:
         self.mod_tail: bytes = b""
         self.original_filename: str | None = None
 
+    OBJECT_TYPE_NAMES: dict[int, str] = {
+        0: "Character",
+        1: "Item",
+        2: "Light",
+        3: "Folder",
+        4: "Route",
+        5: "Camera",
+        7: "Text",
+    }
+
     @classmethod
     def load(cls, filelike: str | bytes | io.BytesIO) -> Self:
         """
@@ -533,6 +543,17 @@ class KoikatuSceneData:
             else:
                 yield key, obj_info
             yield from _walk_children(obj_info, 0)
+
+    def count_object_types(self) -> dict[str, int]:
+        """Count scene objects by type name across the full object tree."""
+        counts: dict[str, int] = {}
+        for _, obj_info in self.walk():
+            obj_type = obj_info.get("type")
+            if not isinstance(obj_type, int):
+                continue
+            name = self.OBJECT_TYPE_NAMES.get(obj_type, f"Unknown({obj_type})")
+            counts[name] = counts.get(name, 0) + 1
+        return counts
 
     def to_dict(self):
         """Convert the scene data to a dictionary"""

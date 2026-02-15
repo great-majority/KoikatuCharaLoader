@@ -226,6 +226,23 @@ def test_load_honeycome_scene_objects():
     assert type_counts.get(4, 0) == 1, "Expected 1 route object"
 
 
+def test_count_object_types_honeycome_scene_items():
+    scene_data = HoneycomeSceneData.load("./data/hc_scene_items.png")
+    assert scene_data.count_object_types() == {"Folder": 76, "Item": 150}
+
+
+def test_count_object_types_honeycome_scene_objects():
+    scene_data = HoneycomeSceneData.load("./data/hc_scene_objects.png")
+    assert scene_data.count_object_types() == {
+        "Folder": 8,
+        "Item": 1,
+        "Character": 1,
+        "Light": 3,
+        "Camera": 1,
+        "Route": 1,
+    }
+
+
 def test_light_data_preservation():
     """Test that light-specific data is preserved through save/load cycle"""
     scene_data = HoneycomeSceneData.load("./data/hc_scene_objects.png")

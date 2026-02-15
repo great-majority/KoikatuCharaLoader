@@ -105,6 +105,21 @@ def test_load_kks_scene():
     assert type_counts.get(3, 0) == 1  # 1 folder
 
 
+def test_count_object_types_koikatu_scene():
+    scene_data = KoikatuSceneData.load("./data/kk_scene.png")
+    assert scene_data.count_object_types() == {"Folder": 19, "Item": 169, "Character": 1}
+
+
+def test_count_object_types_koikatu_mod_scene():
+    scene_data = KoikatuSceneData.load("./data/kk_scene_mod.png")
+    assert scene_data.count_object_types() == {"Folder": 202, "Item": 202, "Character": 1, "Light": 1}
+
+
+def test_count_object_types_kks_scene():
+    scene_data = KoikatuSceneData.load("./data/kks_scene.png")
+    assert scene_data.count_object_types() == {"Light": 1, "Folder": 1, "Item": 3, "Character": 1}
+
+
 def test_scene_to_dict():
     """Test converting a scene to a dictionary"""
     scene_data = KoikatuSceneData.load("./data/kk_scene_simple.png")

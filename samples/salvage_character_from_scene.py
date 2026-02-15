@@ -20,7 +20,7 @@ def search_characters_from_scene(filename):
 
     charas = []
     # Use walk() with type filter to iterate character objects including nested children
-    for _, obj_info in scene.walk(type=KoikatuSceneData.CHARACTER):
+    for _, obj_info in scene.walk(object_type=KoikatuSceneData.CHARACTER):
         chara = obj_info["data"]["character"]
         charas.append(chara)
 

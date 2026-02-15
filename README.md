@@ -191,7 +191,7 @@ for key, obj, depth in scene.walk(include_depth=True):
     print(f"{indent}[depth={depth}] Key: {key}, Type: {obj_type}")
 
 # Type-filtered iteration is also possible
-for key, obj in scene.walk(type=KoikatuSceneData.CHARACTER):
+for key, obj in scene.walk(object_type=KoikatuSceneData.CHARACTER):
     print(f"Character Key: {key}")
 ```
 
@@ -209,7 +209,7 @@ from kkloader import KoikatuSceneData
 scene = KoikatuSceneData.load("./data/kk_scene.png")
 
 # Iterate only character objects in the scene
-for _, obj_info in scene.walk(type=KoikatuSceneData.CHARACTER):
+for _, obj_info in scene.walk(object_type=KoikatuSceneData.CHARACTER):
     chara = obj_info["data"]["character"]
 
     # Use face thumbnail as the character card image

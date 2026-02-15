@@ -245,25 +245,16 @@ def test_count_object_types_honeycome_scene_objects():
 
 def test_walk_filter_object_type_honeycome():
     scene_data = HoneycomeSceneData.load("./data/hc_scene_objects.png")
-    folders = list(scene_data.walk(type=HoneycomeSceneData.FOLDER))
+    folders = list(scene_data.walk(object_type=HoneycomeSceneData.FOLDER))
     assert len(folders) == scene_data.count_object_types()["Folder"]
     assert all(obj["type"] == HoneycomeSceneData.FOLDER for _, obj in folders)
 
 
 def test_walk_filter_object_type_honeycome_with_depth():
     scene_data = HoneycomeSceneData.load("./data/hc_scene_objects.png")
-    cameras = list(scene_data.walk(include_depth=True, type=HoneycomeSceneData.CAMERA))
+    cameras = list(scene_data.walk(include_depth=True, object_type=HoneycomeSceneData.CAMERA))
     assert len(cameras) == scene_data.count_object_types()["Camera"]
     assert all(obj["type"] == HoneycomeSceneData.CAMERA for _, obj, _ in cameras)
-
-
-def test_walk_filter_type_conflict_honeycome():
-    scene_data = HoneycomeSceneData.load("./data/hc_scene_objects.png")
-    try:
-        list(scene_data.walk(object_type=HoneycomeSceneData.FOLDER, type=HoneycomeSceneData.LIGHT))
-        assert False, "Expected ValueError when object_type and type differ"
-    except ValueError:
-        pass
 
 
 def test_light_data_preservation():

@@ -285,7 +285,7 @@ class HoneycomeSceneData:
         encryptor = Cipher(algorithms.AES(self.crypto_key), modes.CBC(self.crypto_iv), backend=default_backend()).encryptor()
         return encryptor.update(data) + encryptor.finalize()
 
-    def walk(self, include_depth: bool = False, object_type: int | None = None, type: int | None = None):
+    def walk(self, include_depth: bool = False, object_type: int | None = None):
         """
         Recursively iterate over all objects in the scene, including nested child objects.
 
@@ -301,8 +301,6 @@ class HoneycomeSceneData:
                           If False, yields (key, obj_info) tuples.
             object_type: Optional object type filter. If provided, only objects
                          with matching type are yielded.
-            type: Alias of object_type for ergonomic calls like
-                  walk(type=HoneycomeSceneData.FOLDER).
 
         Yields:
             If include_depth is False:
@@ -320,17 +318,13 @@ class HoneycomeSceneData:
             >>> for key, obj, depth in scene.walk(include_depth=True):
             ...     print(f"{'  ' * depth}Object {key}: type={obj['type']}")
             >>> # Filter by type (characters):
-            >>> for key, obj in scene.walk(type=HoneycomeSceneData.CHARACTER):
+            >>> for key, obj in scene.walk(object_type=HoneycomeSceneData.CHARACTER):
             ...     print(f"Character key={key}")
         """
-        if object_type is not None and type is not None and object_type != type:
-            raise ValueError("object_type and type must match when both are provided.")
-        filter_type = object_type if object_type is not None else type
-
         def _should_yield(obj_info: dict[str, Any]) -> bool:
-            if filter_type is None:
+            if object_type is None:
                 return True
-            return obj_info.get("type") == filter_type
+            return obj_info.get("type") == object_type
 
         def _walk_children(obj_info, depth):
             """Recursively walk through child objects."""

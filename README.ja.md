@@ -23,6 +23,8 @@ $ python -m pip install kkloader
 $ python
 >>> from kkloader import KoikatuCharaData # モジュールを読み込む
 >>> kc = KoikatuCharaData.load("./data/kk_chara.png") # キャラデータを読み込む
+>>> kc
+KoikatuCharaData(product_no=100, header='【KoiKatuChara】', version='0.0.0', name='白峰 一乃 ( かずのん )', blocks=['Custom', 'Coordinate', 'Parameter', 'Status'], has_kkex=False, original_file_path='/path/to/data/kk_chara.png')
 >>> kc["Parameter"]["nickname"] # ニックネームを表示する
 'かずのん'
 >>> kc["Parameter"]["nickname"] = "ちかりん" # ニックネームを"ちかりん"にする

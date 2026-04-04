@@ -505,15 +505,11 @@ class HoneycomeSceneObjectLoader:
         # Read voice control
         vc_stream = io.BytesIO(data_stream.read(load_type(data_stream, "i")))
         data["voiceCtrl"] = {"list": [], "repeat": None}
-        data["voiceCtrl"]["unknown"] = load_type(vc_stream, "b") # always 0x02
+        data["voiceCtrl"]["unknown"] = load_type(vc_stream, "b")  # always 0x02
         for _ in range(load_type(vc_stream, "i")):
-            voice_info = {
-                "group": load_type(vc_stream, "i"),
-                "category": load_type(vc_stream, "i"),
-                "no": load_type(vc_stream, "i")
-            }
+            voice_info = {"group": load_type(vc_stream, "i"), "category": load_type(vc_stream, "i"), "no": load_type(vc_stream, "i")}
             data["voiceCtrl"]["list"].append(voice_info)
-        data["voiceCtrl"]["repeat"] = load_type(vc_stream, "i") # {0, 1, 2}
+        data["voiceCtrl"]["repeat"] = load_type(vc_stream, "i")  # {0, 1, 2}
 
         # Read visible son
         data["visible_son"] = bool(load_type(data_stream, "b"))
@@ -569,7 +565,7 @@ class HoneycomeSceneObjectLoader:
         data["category"] = load_type(data_stream, "i")
         data["no"] = load_type(data_stream, "i")
 
-        data["anime_pattern"] = load_type(data_stream, "i") # always 0
+        data["anime_pattern"] = load_type(data_stream, "i")  # always 0
         data["anime_speed"] = load_type(data_stream, "f")
 
         data["colors"] = []

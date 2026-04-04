@@ -520,6 +520,7 @@ class KoikatuSceneData:
             >>> for key, obj in scene.walk(object_type=KoikatuSceneData.CHARACTER):
             ...     print(f"Character key={key}")
         """
+
         def _should_yield(obj_info: dict[str, Any]) -> bool:
             if object_type is None:
                 return True
@@ -625,14 +626,7 @@ class KoikatuSceneData:
 
     def __repr__(self):
         """Return a concise debug representation of Koikatu scene data."""
-        return (
-            f"{self.__class__.__name__}("
-            f"version={self.version!r}, "
-            f"original_filename={self.original_filename!r}, "
-            f"tail={self.tail!r}, "
-            f"has_mod={bool(self.mod_header)!r}"
-            ")"
-        )
+        return f"{self.__class__.__name__}(version={self.version!r}, original_filename={self.original_filename!r}, tail={self.tail!r}, has_mod={bool(self.mod_header)!r})"
 
     # ============================================================
     # 3. PRIMITIVE TYPE HELPERS

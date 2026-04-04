@@ -158,10 +158,7 @@ class HoneycomeSceneData:
                 with cls._temp_recursionlimit(recursion_limit):
                     HoneycomeSceneObjectLoader._dispatch_load(data_stream, obj_type, obj_info, version_str)
             except RecursionError as e:
-                raise RuntimeError(
-                    "This scene is too deeply nested, so please increase `recursion_limit`. "
-                    f"(object key={key} type={obj_type})"
-                ) from e
+                raise RuntimeError(f"This scene is too deeply nested, so please increase `recursion_limit`. (object key={key} type={obj_type})") from e
 
             hs.objects[key] = obj_info
 
@@ -321,6 +318,7 @@ class HoneycomeSceneData:
             >>> for key, obj in scene.walk(object_type=HoneycomeSceneData.CHARACTER):
             ...     print(f"Character key={key}")
         """
+
         def _should_yield(obj_info: dict[str, Any]) -> bool:
             if object_type is None:
                 return True
@@ -393,13 +391,4 @@ class HoneycomeSceneData:
 
     def __repr__(self):
         """Return a concise debug representation of Honeycome scene data."""
-        return (
-            f"{self.__class__.__name__}("
-            f"version={self.version!r}, "
-            f"title={self.title!r}, "
-            f"user_id={self.user_id!r}, "
-            f"data_id={self.data_id!r}, "
-            f"original_filename={self.original_filename!r}, "
-            f"footer_marker={self.footer_marker!r}"
-            ")"
-        )
+        return f"{self.__class__.__name__}(version={self.version!r}, title={self.title!r}, user_id={self.user_id!r}, data_id={self.data_id!r}, original_filename={self.original_filename!r}, footer_marker={self.footer_marker!r})"

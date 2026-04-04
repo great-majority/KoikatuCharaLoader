@@ -24,6 +24,8 @@ def main():
     ec.dataid = str(uuid.uuid4()).encode("ascii")
     ec.packages = [0]
     ec.blockdata = copy.deepcopy(kk.blockdata)
+    ec.serialized_lstinfo_order = copy.deepcopy(ec.blockdata)
+    ec.original_lstinfo_order = copy.deepcopy(ec.blockdata)
 
     ec.Custom = copy.deepcopy(kk.Custom)
     ec.Coordinate = Coordinate(data=None, version="0.0.1")

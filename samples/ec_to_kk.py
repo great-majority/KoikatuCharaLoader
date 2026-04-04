@@ -24,6 +24,8 @@ def main():
     kk.header = "【KoiKatuChara】".encode("utf-8")
     kk.version = "0.0.0".encode("ascii")
     kk.blockdata = copy.deepcopy(ec.blockdata)
+    kk.serialized_lstinfo_order = copy.deepcopy(kk.blockdata)
+    kk.original_lstinfo_order = copy.deepcopy(kk.blockdata)
 
     kk.Custom = copy.deepcopy(ec.Custom)
     kk.Coordinate = Coordinate(data=None, version="0.0.0")

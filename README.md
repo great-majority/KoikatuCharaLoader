@@ -223,6 +223,42 @@ for _, obj_info in scene.walk(object_type=KoikatuSceneData.CHARACTER):
 
 Various examples using this module can be found in [this repository](https://github.com/great-majority/kk-snippets), and you can also use it on [this site](https://kk-snippets.streamlit.app/).
 
+# Sample Scripts
+
+The scripts in the `samples/` folder can be run directly with `uv run` after [setting up the environment with uv](https://docs.astral.sh/uv/getting-started/installation/).
+
+### Converting between KK and EC
+
+**You can convert character cards directly in your browser at [this site](https://kk-snippets.streamlit.app/ec-to-kk), without needing a Python environment.**
+
+Koikatu → EmotionCreators:
+```
+uv run samples/kk_to_ec.py <input> <output>
+```
+
+EmotionCreators → Koikatu:
+```
+uv run samples/ec_to_kk.py <input> <output>
+```
+
+Example:
+```
+uv run samples/kk_to_ec.py ./data/kk_chara.png ./data/converted.png
+uv run samples/ec_to_kk.py ./data/ec_chara.png ./data/converted.png
+```
+
+### Extract Character Data from a Koikatu Scene
+
+Saves all characters found in a scene file to the specified directory.
+```
+uv run samples/salvage_character_from_scene.py <scene file> <output dir>
+```
+
+Example:
+```
+uv run samples/salvage_character_from_scene.py ./data/kk_scene.png ./data/
+```
+
 # Contributing
 *You'll need Python 3.11 and the `uv` command (see [this page](https://docs.astral.sh/uv/getting-started/installation/) for installation).*
 

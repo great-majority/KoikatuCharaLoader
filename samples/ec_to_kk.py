@@ -1,22 +1,21 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
-
 # If all you want to do is *use* this script, just visit
 # https://kk-snippets.streamlit.app/ec-to-kk
 # and you can easily convert character cards in your browser.
 
+import argparse
 import copy
-import os
-import sys
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-
-from kkloader.EmocreCharaData import EmocreCharaData  # noqa
-from kkloader.KoikatuCharaData import Coordinate, KoikatuCharaData  # noqa
+from kkloader.EmocreCharaData import EmocreCharaData
+from kkloader.KoikatuCharaData import Coordinate, KoikatuCharaData
 
 
 def main():
-    ec = EmocreCharaData.load("./data/ec_chara.png")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input", help="EmotionCreators character card (.png)")
+    parser.add_argument("output", help="output file path")
+    args = parser.parse_args()
+
+    ec = EmocreCharaData.load(args.input)
     kk = KoikatuCharaData()
 
     kk.image = ec.image
@@ -127,7 +126,7 @@ def main():
     kk.Status["backCoordinateType"] = 0
     kk.Status["shoesType"] = 1
 
-    kk.save("./data/converted_ec_chara.png")
+    kk.save(args.output)
 
 
 if __name__ == "__main__":

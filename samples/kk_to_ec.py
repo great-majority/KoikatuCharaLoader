@@ -1,19 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
-
+import argparse
 import copy
-import os
-import sys
 import uuid
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-
-from kkloader.EmocreCharaData import EmocreCharaData  # noqa
-from kkloader.KoikatuCharaData import Coordinate, KoikatuCharaData  # noqa
+from kkloader.EmocreCharaData import EmocreCharaData
+from kkloader.KoikatuCharaData import Coordinate, KoikatuCharaData
 
 
 def main():
-    kk = KoikatuCharaData.load("./data/kk_chara.png")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input", help="Koikatu character card (.png)")
+    parser.add_argument("output", help="output file path")
+    args = parser.parse_args()
+
+    kk = KoikatuCharaData.load(args.input)
     ec = EmocreCharaData()
 
     ec.image = kk.image
@@ -109,7 +108,7 @@ def main():
     del ec.Status["backCoordinateType"]
     del ec.Status["shoesType"]
 
-    ec.save("./data/converted_kk_chara.png")
+    ec.save(args.output)
 
 
 if __name__ == "__main__":

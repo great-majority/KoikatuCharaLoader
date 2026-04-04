@@ -224,6 +224,42 @@ for _, obj_info in scene.walk(object_type=KoikatuSceneData.CHARACTER):
 
 このモジュールを使った色々な例が [このリポジトリ](https://github.com/great-majority/kk-snippets) にあり、さらに [このサイト](https://kk-snippets.streamlit.app/) で使うこともできます。
 
+# サンプルスクリプトの使い方
+
+`samples/` フォルダにあるスクリプトは[uvで環境を作った](https://docs.astral.sh/uv/getting-started/installation/)後 `uv run` で実行するのが便利です。
+
+### KK/EC間の変換
+
+**[このサイト](https://kk-snippets.streamlit.app/ec-to-kk) を使えば、Python環境を用意することなくブラウザ上で変換できます。**
+
+コイカツ → エモクリ変換:
+```
+uv run samples/kk_to_ec.py <入力ファイル> <出力ファイル>
+```
+
+エモクリ → コイカツ変換:
+```
+uv run samples/ec_to_kk.py <入力ファイル> <出力ファイル>
+```
+
+例:
+```
+uv run samples/kk_to_ec.py ./data/kk_chara.png ./data/converted.png
+uv run samples/ec_to_kk.py ./data/ec_chara.png ./data/converted.png
+```
+
+### コイカツシーンデータからキャラデータを抽出する
+
+シーンファイルに含まれる全キャラクターを指定ディレクトリへ保存します。
+```
+uv run samples/salvage_character_from_scene.py <シーンファイル> <出力ディレクトリ>
+```
+
+例:
+```
+uv run samples/salvage_character_from_scene.py ./data/kk_scene.png ./data/
+```
+
 # 開発に参加する
 *Python 3.11と`uv`コマンドが必要です([このページ](https://docs.astral.sh/uv/getting-started/installation/)を参考にインストールできます)。*
 

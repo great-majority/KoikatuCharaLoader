@@ -2,17 +2,18 @@
 	format\
 	check\
 	install\
+	test\
 
 install:
-	poetry install
+	uv sync
 
 format:
-	poetry run ruff format ./kkloader ./test
-	poetry run ruff check --select I --fix ./kkloader ./test
+	uv run ruff format ./kkloader ./test
+	uv run ruff check --select I --fix ./kkloader ./test
 
 check:
-	poetry run ruff check ./kkloader ./test
-	poetry run pytest
+	uv run ruff check --select I ./kkloader ./test
+	uv run pytest
 
 test:
-	poetry run pytest
+	uv run pytest

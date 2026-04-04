@@ -224,10 +224,10 @@ for _, obj_info in scene.walk(object_type=KoikatuSceneData.CHARACTER):
 Various examples using this module can be found in [this repository](https://github.com/great-majority/kk-snippets), and you can also use it on [this site](https://kk-snippets.streamlit.app/).
 
 # Contributing
-*You'll need Python 3.11 and `poetry` command (you can install with `pip install poetry`).*
+*You'll need Python 3.11 and the `uv` command (see [this page](https://docs.astral.sh/uv/getting-started/installation/) for installation).*
 
 1. Fork the repository and pull the latest changes.
-2. Run `make install` to install the dependencies.
+2. Run `make install` to set up the environment with uv.
 3. Create a new branch and make changes to the code.
 4. Run `make format` and `make check`
 5. Once `make check` passes, push the code and open a pull request on the repository.

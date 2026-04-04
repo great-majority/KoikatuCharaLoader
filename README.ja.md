@@ -225,10 +225,10 @@ for _, obj_info in scene.walk(object_type=KoikatuSceneData.CHARACTER):
 このモジュールを使った色々な例が [このリポジトリ](https://github.com/great-majority/kk-snippets) にあり、さらに [このサイト](https://kk-snippets.streamlit.app/) で使うこともできます。
 
 # 開発に参加する
-*Python 3.11と`poetry`コマンドが必要です(`pip install poetry`でインストールできます)。*
+*Python 3.11と`uv`コマンドが必要です([このページ](https://docs.astral.sh/uv/getting-started/installation/)を参考にインストールできます)。*
 
 1. このリポジトリをフォークし、ローカルにpullします。
-2. `make install`して依存関係をインストールします。
+2. `make install`してuvを使って環境がセットアップされます。
 3. 新しくブランチを切り、コードに変更を加えます。
 4. `make format`と`make check`を行い、変更を加えたコードをフォーマット&チェックします。
 5. `make check`がエラーなく終わったなら、コードをpushしこのリポジトリにプルリクエストを出してください。

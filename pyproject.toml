@@ -1,31 +1,35 @@
-[tool.poetry]
+[project]
 name = "kkloader"
-version = "0.0.0"
+dynamic = ["version"]
 description = "a simple deserializer / serializer for Koikatu / EmotionCreators / Honeycome / SummerVacationScramble data."
-authors = ["great-majority <wired.wireless0@gmail.com>"]
-homepage = "https://github.com/great-majority/KoikatuCharaLoader"
+authors = [
+    {name = "great-majority", email = "wired.wireless0@gmail.com"},
+]
 readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "msgpack>=1.0.3,<2",
+    "pandas>=2.2.2,<3",
+    "lz4>=4.4.4,<5",
+    "cryptography>=46.0.3,<47",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-msgpack = "^1.0.3"
-pandas = "^2.2.2"
-lz4 = "^4.4.4"
-cryptography = "^46.0.3"
+[project.urls]
+Homepage = "https://github.com/great-majority/KoikatuCharaLoader"
 
-
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.6.3"
-pytest = "^7.1.1"
+[dependency-groups]
+dev = [
+    "ruff>=0.6.3",
+    "pytest>=7.1.1",
+]
 
 [build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
-[tool.poetry-dynamic-versioning]
-enable = true
-pattern = "(?P<base>\\d+(\\.\\d+)*)"
-format = "{base}"
+[tool.hatch.version]
+source = "vcs"
+pattern = "(?P<version>\\d+(\\.\\d+)*)"
 
 [tool.ruff]
 line-length = 255

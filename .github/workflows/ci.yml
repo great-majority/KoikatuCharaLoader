@@ -9,21 +9,15 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
+    - uses: actions/checkout@v4
+    - uses: astral-sh/setup-uv@v5
       with:
-        python-version: 3.11
-    - name: Install pip
-      run: |
-        python -m pip install --upgrade pip
-    - name: Install poetry
-      run: |
-        python -m pip install poetry
+        python-version: "3.11"
     - name: Install dependencies
-      run: poetry install
+      run: uv sync
     - name: Lint with ruff
       run: |
-        poetry run ruff check --output-format=github ./kkloader ./test
+        uv run ruff check --select I --output-format=github ./kkloader ./test
     - name: Test with pytest
       run: |
-        poetry run pytest
+        uv run pytest

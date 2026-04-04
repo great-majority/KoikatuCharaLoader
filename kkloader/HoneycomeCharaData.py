@@ -32,6 +32,7 @@ class HoneycomeCharaData(kkloader.KoikatuCharaData):
             "GameInfo_HC": GameInfo_HC,
         }
 
+
 class Custom(BlockData):
     """Block data for Honeycome custom character appearance (face, body only).
 

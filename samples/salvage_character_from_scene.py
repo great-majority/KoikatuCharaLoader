@@ -1,12 +1,7 @@
-#!/usr/bin/env python
-
+import argparse
 import copy
-import os
-import sys
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-
-from kkloader import KoikatuSceneData  # noqa
+from kkloader import KoikatuSceneData
 
 
 def search_characters_from_scene(filename):
@@ -28,7 +23,12 @@ def search_characters_from_scene(filename):
 
 
 def main():
-    charas = search_characters_from_scene("./data/kk_scene.png")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input", help="Koikatu scene file (.png)")
+    parser.add_argument("output_dir", help="output directory")
+    args = parser.parse_args()
+
+    charas = search_characters_from_scene(args.input)
 
     for c in charas:
         print(c)
@@ -39,7 +39,7 @@ def main():
             c["Parameter"]["firstname"],
             c["Parameter"]["nickname"],
         )
-        c.save("./data/{}.png".format(name))
+        c.save("{}/{}.png".format(args.output_dir, name))
 
 
 if __name__ == "__main__":

@@ -25,6 +25,7 @@ class SummerVacationCharaData(kkloader.KoikatuCharaData):
             "GameInfo_SV": GameInfo_SV,
         }
 
+
 class GameParameter_SV(BlockData):
     """Block data for SummerVacationScramble game parameters."""
 

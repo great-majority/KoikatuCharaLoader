@@ -25,6 +25,7 @@ class AicomiCharaData(kkloader.KoikatuCharaData):
             "GameInfo_AC": GameInfo_AC,
         }
 
+
 class GameParameter_AC(BlockData):
     """Block data for Aicomi game parameters."""
 

@@ -17,7 +17,7 @@ jobs:
       run: uv sync
     - name: Lint with ruff
       run: |
-        uv run ruff check --select I --output-format=github ./kkloader ./test
+        uv run ruff check --select I --output-format=github ./kkloader ./test ./samples
     - name: Test with pytest
       run: |
         uv run pytest

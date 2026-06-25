@@ -1,5 +1,5 @@
 # KoikatuCharaLoader
-A simple deserializer and serializer for character and scene data from Koikatu, EmotionCreators, Honeycome, SummerVacationScramble and Aicomi.
+A simple deserializer and serializer for character and scene data from Koikatu, EmotionCreators, Honeycome, SummerVacationScramble, Aicomi and AmanatsuLocation.
 
 [![](https://img.shields.io/pypi/v/kkloader)](https://pypi.org/project/kkloader/)
 [![Downloads](https://static.pepy.tech/badge/kkloader)](https://pepy.tech/project/kkloader)
@@ -44,11 +44,12 @@ That's it! :)
   - `SummerVacationCharaData`
   - `SummerVacationSaveData`
   - `AicomiCharaData`
+  - `AmanatsuCharaData`
   - `HoneycomeSceneData` (also compatible with DigitalCraft)
+  - `EmocreSceneData`
 - Supports loading only:
   - `KoikatuSaveData`
   - `EmocreMapData`
-  - `EmocreSceneData`
 
 Any class can be imported with `from kkloader import KoikatuCharaData` and data can be loaded using the `.load(filename)` method.
 

@@ -1,5 +1,5 @@
 # KoikatuCharaLoader
-このプログラムは、コイカツ・エモクリ・ハニカム・サマすく・アイコミのキャラカード・シーンデータをPythonで読み込む・書き込むためのライブラリです。
+このプログラムは、コイカツ・エモクリ・ハニカム・サマすく・アイコミ・あまろけのキャラカード・シーンデータをPythonで読み込む・書き込むためのライブラリです。
 
 [![](https://img.shields.io/pypi/v/kkloader)](https://pypi.org/project/kkloader/)
 [![Downloads](https://static.pepy.tech/badge/kkloader)](https://pepy.tech/project/kkloader)
@@ -42,11 +42,12 @@ KoikatuCharaData(product_no=100, header='【KoiKatuChara】', version='0.0.0', n
   - `SummerVacationCharaData`
   - `SummerVacationSaveData`
   - `AicomiCharaData`
+  - `AmanatsuCharaData`
   - `HoneycomeSceneData` (DigitalCraft全般に対応)
+  - `EmocreSceneData`
 - 読み込みのみ対応
   - `KoikatuSaveData`
   - `EmocreMapData`
-  - `EmocreSceneData`
 
 いずれのクラスも `from kkloader import KoikatuCharaData` のようにインポートし、 `.load(filename)` のようにファイルを読み込むことができます。
 

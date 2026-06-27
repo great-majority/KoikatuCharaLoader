@@ -270,6 +270,10 @@ uv run samples/salvage_character_from_scene.py ./data/kk_scene.png ./data/
 4. `make format`と`make check`を行い、変更を加えたコードをフォーマット&チェックします。
 5. `make check`がエラーなく終わったなら、コードをpushしこのリポジトリにプルリクエストを出してください。
 
+# 関連プロジェクト
+
+このライブラリのJavaScript/TypeScript版が [koikatu.js](https://github.com/great-majority/koikatu.js) にあります。
+
 # 謝辞
 - [martinwu42/pykoikatu](https://github.com/martinwu42/pykoikatu)
 

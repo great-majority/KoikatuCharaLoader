@@ -269,6 +269,10 @@ uv run samples/salvage_character_from_scene.py ./data/kk_scene.png ./data/
 4. Run `make format` and `make check`
 5. Once `make check` passes, push the code and open a pull request on the repository.
 
+# Related
+
+A JavaScript/TypeScript port of this library is available at [koikatu.js](https://github.com/great-majority/koikatu.js).
+
 # Acknowledgements
 - [martinwu42/pykoikatu](https://github.com/martinwu42/pykoikatu)
 

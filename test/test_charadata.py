@@ -1,9 +1,12 @@
+import json
 import os
+import re
 import tempfile
 from pathlib import Path
 
 from kkloader import (
     AicomiCharaData,
+    AmanatsuCharaData,
     EmocreCharaData,
     HoneycomeCharaData,
     KoikatuCharaData,
@@ -11,6 +14,8 @@ from kkloader import (
 )
 
 import pytest
+
+_IMAGE_SUMMARY_RE = re.compile(r"^\[(PNG|JPEG) image, [\d,]+ bytes, md5:[0-9a-f]{32}\]$")
 
 
 def test_load_character():
@@ -324,3 +329,61 @@ def test_character_str_falls_back_to_repr():
     ]
     for chara in samples:
         assert str(chara) == repr(chara)
+
+
+def _collect_image_summaries(obj):
+    """Recursively collect all strings that look like image summaries."""
+    found = []
+    if isinstance(obj, dict):
+        for v in obj.values():
+            found.extend(_collect_image_summaries(v))
+    elif isinstance(obj, list):
+        for v in obj:
+            found.extend(_collect_image_summaries(v))
+    elif isinstance(obj, str) and _IMAGE_SUMMARY_RE.match(obj):
+        found.append(obj)
+    return found
+
+
+def _has_base64_image(obj):
+    """Check if any string value looks like a base64-encoded PNG/JPEG."""
+    if isinstance(obj, dict):
+        return any(_has_base64_image(v) for v in obj.values())
+    if isinstance(obj, list):
+        return any(_has_base64_image(v) for v in obj)
+    if isinstance(obj, str) and len(obj) > 100:
+        return obj.startswith("iVBOR") or obj.startswith("/9j/")
+    return False
+
+
+@pytest.mark.parametrize(
+    "loader,path",
+    [
+        (KoikatuCharaData, "./data/kk_chara.png"),
+        (AmanatsuCharaData, "./data/al_chara.png"),
+        (SummerVacationCharaData, "./data/sv_chara.png"),
+    ],
+    ids=["kk", "al", "svs"],
+)
+class TestSaveJsonSummarizeImage:
+    def test_summarize_image_default(self, loader, path):
+        chara = loader.load(path)
+        tmpfile = tempfile.NamedTemporaryFile(suffix=".json")
+        chara.save_json(tmpfile.name, include_image=True)
+        with open(tmpfile.name) as f:
+            data = json.load(f)
+        summaries = _collect_image_summaries(data)
+        assert len(summaries) >= 1
+        for s in summaries:
+            assert _IMAGE_SUMMARY_RE.match(s)
+        assert not _has_base64_image(data)
+
+    def test_summarize_image_false(self, loader, path):
+        chara = loader.load(path)
+        tmpfile = tempfile.NamedTemporaryFile(suffix=".json")
+        chara.save_json(tmpfile.name, include_image=True, summarize_image=False)
+        with open(tmpfile.name) as f:
+            data = json.load(f)
+        summaries = _collect_image_summaries(data)
+        assert len(summaries) == 0
+        assert _has_base64_image(data)

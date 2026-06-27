@@ -1,5 +1,6 @@
 import base64
 import copy
+import hashlib
 import io
 import json
 import os
@@ -10,6 +11,31 @@ from kkloader.funcs import get_png, load_length, load_type, msg_pack, msg_pack_k
 
 import lz4.block
 import msgpack
+
+_IMAGE_SIGNATURES = {
+    b"\x89PNG\r\n\x1a\n": "PNG",
+    b"\xff\xd8\xff": "JPEG",
+}
+
+
+def _detect_image_format(data: bytes) -> str | None:
+    for sig, fmt in _IMAGE_SIGNATURES.items():
+        if data[: len(sig)] == sig:
+            return fmt
+    return None
+
+
+def _summarize_bytes(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {k: _summarize_bytes(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_summarize_bytes(v) for v in obj]
+    if isinstance(obj, bytes):
+        fmt = _detect_image_format(obj)
+        if fmt:
+            md5 = hashlib.md5(obj).hexdigest()
+            return f"[{fmt} image, {len(obj):,} bytes, md5:{md5}]"
+    return obj
 
 
 def _bin_to_str(serial: io.BufferedRandom | bytes) -> str:
@@ -230,12 +256,14 @@ class KoikatuCharaData:
         with open(filename, "bw+") as f:
             f.write(data)
 
-    def save_json(self, filename: str, include_image: bool = False) -> None:
+    def save_json(self, filename: str, include_image: bool = False, summarize_image: bool = True) -> None:
         """Save the character data as JSON.
 
         Args:
             filename: Path to the output JSON file.
             include_image: Whether to include base64-encoded images in the output.
+            summarize_image: Whether to replace image bytes with a human-readable
+                summary (format, size, md5) instead of base64-encoding them.
         """
         data: dict[str, Any] = {}
         header_data = self._make_dict_header(include_image=include_image)
@@ -247,6 +275,9 @@ class KoikatuCharaData:
             versions[v] = getattr(self, v).version
         data["blockdata_versions"] = versions
 
+        if summarize_image:
+            data = _summarize_bytes(data)
+
         with open(filename, "w+") as f:
             json.dump(data, f, indent=2, default=_bin_to_str)
 
@@ -254,7 +285,7 @@ class KoikatuCharaData:
         """Create a dictionary representation of the header.
 
         Args:
-            include_image: Whether to include base64-encoded images.
+            include_image: Whether to include images in the output.
 
         Returns:
             Dictionary containing header information.
@@ -267,8 +298,8 @@ class KoikatuCharaData:
         }
         if include_image:
             if self.image:
-                data.update({"image": base64.b64encode(self.image).decode("ascii")})
-            data.update({"face_image": base64.b64encode(self.face_image).decode("ascii")})
+                data["image"] = self.image
+            data["face_image"] = self.face_image
         return data
 
     def _repr_name(self) -> str:
@@ -469,7 +500,7 @@ class BlockData:
         Returns:
             JSON-formatted string representation.
         """
-        return json.dumps(self.jsonalizable(), indent=2, ensure_ascii=False, default=_bin_to_str)
+        return json.dumps(_summarize_bytes(self.jsonalizable()), indent=2, ensure_ascii=False, default=_bin_to_str)
 
 
 class Custom(BlockData):

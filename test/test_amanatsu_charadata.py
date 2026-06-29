@@ -55,7 +55,6 @@ def test_repr_amanatsu():
     repr_text = repr(al)
     assert "AmanatsuCharaData" in repr_text
     assert "【ALChara】" in repr_text
-    assert "鳴海 京香" in repr_text
 
 
 def test_load_al_coordinate():

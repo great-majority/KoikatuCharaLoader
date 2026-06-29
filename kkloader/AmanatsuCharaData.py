@@ -1,11 +1,12 @@
 """Amanatsu Location character data loader and saver."""
 
 import io
+import os
 import struct
 from typing import Any
 
 import kkloader.KoikatuCharaData
-from kkloader.funcs import load_length, load_type, msg_pack, msg_unpack
+from kkloader.funcs import get_png, load_length, load_type, msg_pack, msg_unpack
 from kkloader.HoneycomeCharaData import Custom, Graphic
 from kkloader.KoikatuCharaData import BlockData
 
@@ -41,26 +42,43 @@ class CoordinateEntry:
 
     def __init__(self) -> None:
         """Initialize an empty CoordinateEntry."""
+        self.image: bytes | None = None
         self.product_no: int = 0
         self.header: bytes = b""
         self.version: bytes = b""
         self.unknown: bytes = b"\x00\x00"
         self.blockdata: list[str] = []
+        self.original_file_path: str | None = None
         self.original_lstinfo_order: list[str] = []
         self.serialized_lstinfo_order: list[str] = []
 
     @classmethod
-    def load(cls, raw_bytes: bytes) -> "CoordinateEntry":
-        """Load a coordinate entry from raw bytes.
+    def load(cls, filelike: str | bytes | io.BytesIO, contains_png: bool = False) -> "CoordinateEntry":
+        """Load a coordinate entry from a file, bytes, or BytesIO stream.
 
         Args:
-            raw_bytes: The raw bytes of a single coordinate entry.
+            filelike: Path to a coordinate file, raw bytes, or BytesIO stream.
+            contains_png: Whether the input contains a PNG image header.
 
         Returns:
             A CoordinateEntry instance with loaded data.
         """
         entry = cls()
-        stream = io.BytesIO(raw_bytes)
+
+        if isinstance(filelike, str):
+            with open(filelike, "br") as f:
+                raw_bytes = f.read()
+            stream = io.BytesIO(raw_bytes)
+            entry.original_file_path = os.path.abspath(filelike)
+        elif isinstance(filelike, bytes):
+            stream = io.BytesIO(filelike)
+        elif isinstance(filelike, io.BytesIO):
+            stream = filelike
+        else:
+            raise ValueError("unsupported input. type:{}".format(type(filelike)))
+
+        if contains_png:
+            entry.image = get_png(stream)
 
         entry.product_no = load_type(stream, "i")
         entry.header = load_length(stream, "b")
@@ -85,8 +103,19 @@ class CoordinateEntry:
 
         return entry
 
+    def save(self, filename: str) -> None:
+        """Save the coordinate entry to a file.
+
+        Args:
+            filename: Path to write the coordinate file.
+        """
+        with open(filename, "bw") as f:
+            if self.image is not None:
+                f.write(self.image)
+            f.write(bytes(self))
+
     def __bytes__(self) -> bytes:
-        """Serialize the coordinate entry to bytes.
+        """Serialize the coordinate entry to bytes (without PNG image).
 
         Returns:
             Binary representation of the coordinate entry.

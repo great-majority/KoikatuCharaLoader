@@ -56,3 +56,27 @@ def test_repr_amanatsu():
     assert "AmanatsuCharaData" in repr_text
     assert "【ALChara】" in repr_text
     assert "鳴海 京香" in repr_text
+
+
+def test_load_al_coordinate():
+    from kkloader.AmanatsuCharaData import CoordinateEntry
+
+    entry = CoordinateEntry.load("./data/al_coordinate.png", contains_png=True)
+    assert entry.image is not None
+    assert entry.header == b"\xe3\x80\x90ALClothes\xe3\x80\x91"
+    assert entry.product_no == 100
+    assert entry.blockdata == ["Clothes", "Accessory", "Hair", "FaceMakeup", "BodyMakeup", "About"]
+    assert entry.original_file_path.endswith("al_coordinate.png")
+
+
+def test_save_al_coordinate():
+    from kkloader.AmanatsuCharaData import CoordinateEntry
+
+    with open("./data/al_coordinate.png", "rb") as f:
+        raw_data = f.read()
+    entry = CoordinateEntry.load("./data/al_coordinate.png", contains_png=True)
+    tmpfile = tempfile.NamedTemporaryFile()
+    entry.save(tmpfile.name)
+    with open(tmpfile.name, "rb") as f:
+        saved_data = f.read()
+    assert raw_data == saved_data

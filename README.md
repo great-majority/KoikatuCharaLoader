@@ -52,6 +52,7 @@ That's it! :)
   - `AicomiSaveData`
   - `AmanatsuCharaData`
   - `AmanatsuCharaData.CoordinateEntry` (AmanatsuLocation coordinate data)
+  - `AmanatsuSaveData`
   - `HoneycomeSceneData` (also compatible with DigitalCraft)
   - `EmocreSceneData`
 - Supports loading only:

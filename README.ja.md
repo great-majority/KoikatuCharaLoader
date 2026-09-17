@@ -46,9 +46,10 @@ KoikatuCharaData(product_no=100, header='【KoiKatuChara】', version='0.0.0', n
   - `SummerVacationCharaData.CoordinateEntry`（サマすくのコーデ情報）
   - `SummerVacationSaveData`
   - `AicomiCharaData`
-  - `AicomiCharaData.CoordinateEntry`（あいこみのコーデ情報）
+  - `AicomiCharaData.CoordinateEntry`（アイコミのコーデ情報）
   - `AmanatsuCharaData`
   - `AmanatsuCharaData.CoordinateEntry`（甘夏ろけーしょんのコーデ情報）
+  - `AmanatsuSaveData`
   - `HoneycomeSceneData` (DigitalCraft全般に対応)
   - `EmocreSceneData`
 - 読み込みのみ対応

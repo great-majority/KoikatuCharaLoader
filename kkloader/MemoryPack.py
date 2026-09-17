@@ -1,9 +1,8 @@
 """A small MemoryPack wire-format reader/writer.
 
 MemoryPack (Cysharp) is the binary serializer used by ILLGAMES titles. This
-module implements just enough of the wire format to decode the Aicomi save
-records whose field order/type were recovered from the il2cpp dump
-(see `kkloader.AicomiSaveData`). It is intentionally partial: value types with
+module implements the shared wire primitives used by the Aicomi and Amanatsu
+Location save-data codecs. It is intentionally partial: value types with
 hand-written formatters that we have not reverse-engineered raise
 `UndecodableType`, which the caller turns into a raw-bytes fallback so the
 overall round-trip stays byte-exact.
@@ -143,23 +142,90 @@ _PRIM: dict[str, Callable[[MpReader], Any]] = {
     "string": MpReader.string,
 }
 
+_VERSION_KEYS = ["major", "minor", "build", "revision"]
+
+
+def _read_version_components(r: MpReader, max_components: int | None = None) -> list[int] | None:
+    """Read the integer components of a ``System.Version`` object."""
+    count = r.object_header()
+    if count is None:
+        return None
+    if max_components is not None and count > max_components:
+        raise ValueError(f"implausible System.Version component count {count}")
+    return [r.i32() for _ in range(count)]
+
+
+def _write_version_components(w: MpWriter, components: list[int] | None) -> None:
+    """Write the integer components of a ``System.Version`` object."""
+    if components is None:
+        w.object_header(None)
+        return
+    w.object_header(len(components))
+    for component in components:
+        w.i32(component)
+
 
 def read_version(r: MpReader) -> dict | None:
     """System.Version — object header (4) + major/minor/build/revision i32."""
-    n = r.object_header()
-    if n is None:
+    components = _read_version_components(r)
+    if components is None:
         return None
-    vals = [r.i32() for _ in range(n)]
-    keys = ["major", "minor", "build", "revision"]
-    return {keys[i] if i < len(keys) else str(i): v for i, v in enumerate(vals)}
+    return {_VERSION_KEYS[i] if i < len(_VERSION_KEYS) else str(i): value for i, value in enumerate(components)}
 
 
-def read_primitive_array(r: MpReader, elem: str) -> list | None:
-    n = r.collection_header()
-    if n is None:
+def write_version(w: MpWriter, value: dict[str, int] | None) -> None:
+    """Write the dictionary representation returned by :func:`read_version`."""
+    if value is None:
+        _write_version_components(w, None)
+        return
+    components = [value[key] for key in _VERSION_KEYS if key in value]
+    extra_keys = sorted((key for key in value if key not in _VERSION_KEYS), key=int)
+    components.extend(value[key] for key in extra_keys)
+    _write_version_components(w, components)
+
+
+def read_version_string(r: MpReader, max_components: int | None = None) -> str | None:
+    """Read ``System.Version`` as a dot-separated string."""
+    components = _read_version_components(r, max_components)
+    if components is None:
         return None
+    return ".".join(str(component) for component in components)
+
+
+def write_version_string(w: MpWriter, value: str | None) -> None:
+    """Write a dot-separated ``System.Version`` string."""
+    components = None if value is None else [int(part) for part in value.split(".")]
+    _write_version_components(w, components)
+
+
+def read_byte_array(r: MpReader, max_count: int | None = None) -> bytes | None:
+    """Read a MemoryPack byte array."""
+    count = r.collection_header()
+    if count is None:
+        return None
+    if count < 0 or (max_count is not None and count > max_count):
+        raise ValueError(f"invalid byte-array length {count}")
+    return r._take(count)
+
+
+def write_byte_array(w: MpWriter, value: bytes | bytearray | None) -> None:
+    """Write a MemoryPack byte array."""
+    if value is None:
+        w.collection_header(None)
+        return
+    data = bytes(value)
+    w.collection_header(len(data))
+    w.raw(data)
+
+
+def read_primitive_array(r: MpReader, elem: str, max_count: int | None = None) -> list | None:
+    count = r.collection_header()
+    if count is None:
+        return None
+    if count < 0 or (max_count is not None and count > max_count):
+        raise ValueError(f"invalid {elem} array length {count}")
     fn = _PRIM[elem]
-    return [fn(r) for _ in range(n)]
+    return [fn(r) for _ in range(count)]
 
 
 class MpWriter:
@@ -181,14 +247,29 @@ class MpWriter:
     def boolean(self, v: bool) -> None:
         self.buf += b"\x01" if v else b"\x00"
 
+    def i16(self, v: int) -> None:
+        self.buf += struct.pack("<h", v)
+
+    def u16(self, v: int) -> None:
+        self.buf += struct.pack("<H", v)
+
     def i32(self, v: int) -> None:
         self.buf += struct.pack("<i", v)
 
     def u32(self, v: int) -> None:
         self.buf += struct.pack("<I", v)
 
+    def i64(self, v: int) -> None:
+        self.buf += struct.pack("<q", v)
+
+    def u64(self, v: int) -> None:
+        self.buf += struct.pack("<Q", v)
+
     def f32(self, v: float) -> None:
         self.buf += struct.pack("<f", v)
+
+    def f64(self, v: float) -> None:
+        self.buf += struct.pack("<d", v)
 
     def varint(self, v: int) -> None:
         """MemoryPack VarInt, mirroring `MemoryPackWriter.WriteVarInt(int)`."""
@@ -207,6 +288,9 @@ class MpWriter:
     def object_header(self, count: int | None) -> None:
         self.u8(NULL_OBJECT if count is None else count)
 
+    def collection_header(self, count: int | None) -> None:
+        self.i32(-1 if count is None else count)
+
     def string(self, s: str | None) -> None:
         if s is None:
             self.i32(-1)
@@ -221,3 +305,30 @@ class MpWriter:
 
     def bytes(self) -> bytes:
         return bytes(self.buf)
+
+
+_PRIM_WRITER: dict[str, Callable[[MpWriter, Any], None]] = {
+    "bool": MpWriter.boolean,
+    "byte": MpWriter.u8,
+    "sbyte": MpWriter.i8,
+    "short": MpWriter.i16,
+    "ushort": MpWriter.u16,
+    "int": MpWriter.i32,
+    "uint": MpWriter.u32,
+    "long": MpWriter.i64,
+    "ulong": MpWriter.u64,
+    "float": MpWriter.f32,
+    "double": MpWriter.f64,
+    "string": MpWriter.string,
+}
+
+
+def write_primitive_array(w: MpWriter, elem: str, values: list[Any] | None) -> None:
+    """Write a MemoryPack array of primitive values."""
+    if values is None:
+        w.collection_header(None)
+        return
+    w.collection_header(len(values))
+    write_element = _PRIM_WRITER[elem]
+    for value in values:
+        write_element(w, value)

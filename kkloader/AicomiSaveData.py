@@ -33,7 +33,16 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from kkloader import AicomiCharaData
 from kkloader.funcs import load_length, load_type, to_stream
-from kkloader.MemoryPack import MpReader, MpWriter
+from kkloader.MemoryPack import (
+    MpReader,
+    MpWriter,
+    read_byte_array,
+    read_primitive_array,
+    read_version_string,
+    write_byte_array,
+    write_primitive_array,
+    write_version_string,
+)
 
 
 class AicomiSaveData:
@@ -247,40 +256,17 @@ def _status(r: MpReader) -> str | None:
 
 def _version(r: MpReader) -> str | None:
     """System.Version — [u8 count|0xFF][count x i32] (-1 = unset component)."""
-    c = r.u8()
-    if c == 0xFF:
-        return None
-    if c > 8:
-        raise ValueError(f"implausible Version component count {c}")
-    return ".".join(str(r.i32()) for _ in range(c))
-
-
-def _arr(r: MpReader, elem_size: int, signed: bool = True) -> list | bytes | None:
-    """MemoryPack collection of unmanaged elements: [i32 n][n x elem]."""
-    n = r.i32()
-    if n == -1:
-        return None
-    if not 0 <= n <= 1_000_000:
-        raise ValueError(f"implausible collection count {n}")
-    if elem_size == 1:
-        return r._take(n)
-    fmt = {4: "<i", 8: "<q"}[elem_size] if signed else {4: "<I"}[elem_size]
-    return [struct.unpack(fmt, r._take(elem_size))[0] for _ in range(n)]
+    return read_version_string(r, max_components=8)
 
 
 def _arr_f32(r: MpReader) -> list[float] | None:
-    n = r.i32()
-    if n == -1:
-        return None
-    if not 0 <= n <= 1_000_000:
-        raise ValueError(f"implausible collection count {n}")
-    return [r.f32() for _ in range(n)]
+    return read_primitive_array(r, "float", max_count=1_000_000)
 
 
 def _list_guid8(r: MpReader) -> list[dict[str, int]] | None:
     """List<AssignGuid> — [i32 n][n x 8B]."""
-    n = r.i32()
-    if n == -1:
+    n = r.collection_header()
+    if n is None:
         return None
     if not 0 <= n <= 100_000:
         raise ValueError(f"implausible collection count {n}")
@@ -296,8 +282,8 @@ def _nullable_i32(r: MpReader) -> int | None:
 
 def _ikd(r: MpReader, read_value) -> dict[int, Any] | None:
     """IntKeyDictionary<V> — [i32 n][n x (i32 key, V value)]."""
-    n = r.i32()
-    if n == -1:
+    n = r.collection_header()
+    if n is None:
         return None
     if not 0 <= n <= 1_000_000:
         raise ValueError(f"implausible dictionary count {n}")
@@ -310,12 +296,12 @@ def _ikd(r: MpReader, read_value) -> dict[int, Any] | None:
 
 def _int_jagged(r: MpReader) -> list | None:
     """int[][] — [i32 n][n x int[]]."""
-    n = r.i32()
-    if n == -1:
+    n = r.collection_header()
+    if n is None:
         return None
     if not 0 <= n <= 100_000:
         raise ValueError(f"implausible jagged count {n}")
-    return [_arr(r, 4) for _ in range(n)]
+    return [read_primitive_array(r, "int", max_count=1_000_000) for _ in range(n)]
 
 
 # ---------------------------------------------------------------------------
@@ -335,9 +321,9 @@ _LEAF: dict[str, Any] = {
     "status": _status,
     "version": _version,
     "nint": _nullable_i32,
-    "bytes": lambda r: _to_list(_arr(r, 1)),
-    "bools": lambda r: _to_bools(_arr(r, 1)),
-    "ints": lambda r: _arr(r, 4),
+    "bytes": lambda r: _to_list(read_byte_array(r, max_count=1_000_000)),
+    "bools": lambda r: _to_bools(read_byte_array(r, max_count=1_000_000)),
+    "ints": lambda r: read_primitive_array(r, "int", max_count=1_000_000),
     "floats": _arr_f32,
     "guids": _list_guid8,
     "raw2": lambda r: r._take(2).hex(),  # Nullable<sbyte>
@@ -518,7 +504,7 @@ def _talk_patterns(r: MpReader):
 
 def _ikd_intset(r: MpReader):
     """IntKeyDictionary<HashSet<int>> — the set is a plain [i32 n][n x i32]."""
-    return _ikd(r, lambda rr: _arr(rr, 4))
+    return _ikd(r, lambda rr: read_primitive_array(rr, "int", max_count=1_000_000))
 
 
 def _ikd_ikd_intset(r: MpReader):
@@ -768,16 +754,6 @@ def _w_status(w: MpWriter, v: str | None) -> None:
     w.raw(b)
 
 
-def _w_version(w: MpWriter, v: str | None) -> None:
-    if v is None:
-        w.u8(0xFF)
-        return
-    parts = v.split(".")
-    w.u8(len(parts))
-    for p in parts:
-        w.i32(int(p))
-
-
 def _w_nint(w: MpWriter, v: int | None) -> None:
     if v is None:
         w.i32(0)
@@ -788,44 +764,26 @@ def _w_nint(w: MpWriter, v: int | None) -> None:
 
 
 def _w_bytes(w: MpWriter, v: list[int] | None) -> None:
-    if v is None:
-        w.i32(-1)
-        return
-    w.i32(len(v))
-    w.raw(bytes(v))
+    write_byte_array(w, None if v is None else bytes(v))
 
 
 def _w_bools(w: MpWriter, v: list[bool] | None) -> None:
-    if v is None:
-        w.i32(-1)
-        return
-    w.i32(len(v))
-    w.raw(bytes([1 if x else 0 for x in v]))
+    write_byte_array(w, None if v is None else bytes(1 if x else 0 for x in v))
 
 
 def _w_ints(w: MpWriter, v: list[int] | None) -> None:
-    if v is None:
-        w.i32(-1)
-        return
-    w.i32(len(v))
-    for x in v:
-        w.i32(x)
+    write_primitive_array(w, "int", v)
 
 
 def _w_floats(w: MpWriter, v: list[float] | None) -> None:
-    if v is None:
-        w.i32(-1)
-        return
-    w.i32(len(v))
-    for x in v:
-        w.f32(x)
+    write_primitive_array(w, "float", v)
 
 
 def _w_guids(w: MpWriter, v: list[dict[str, int]] | None) -> None:
     if v is None:
-        w.i32(-1)
+        w.collection_header(None)
         return
-    w.i32(len(v))
+    w.collection_header(len(v))
     for g in v:
         _w_assign_guid(w, g)
 
@@ -844,7 +802,7 @@ _LEAF_W: dict[str, Any] = {
     "guid8": _w_assign_guid,
     "nguid12": _w_nullable_assign_guid,
     "status": _w_status,
-    "version": _w_version,
+    "version": write_version_string,
     "nint": _w_nint,
     "bytes": _w_bytes,
     "bools": _w_bools,
